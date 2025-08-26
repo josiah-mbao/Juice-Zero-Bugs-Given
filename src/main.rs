@@ -4,11 +4,13 @@ use bevy_xpbd_2d::prelude::*;
 // Import our modules
 mod combat;
 mod game_state;
+mod menu;
 mod player;
 mod ui;
 
 use combat::CombatPlugin;
 use game_state::AppState;
+use menu::MenuPlugin;
 use player::{FacingDirection, Health, MoveSpeed, Player, PlayerPlugin};
 use ui::UiPlugin;
 
@@ -17,7 +19,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
-                    title: "Fighter Game".into(),
+                    title: "Jucie: Zero Bugs Given".into(),
                     ..default()
                 }),
                 ..default()
@@ -28,9 +30,10 @@ fn main() {
             PlayerPlugin,
             CombatPlugin,
             UiPlugin,
+            MenuPlugin,
         ))
         .init_state::<AppState>() // Initialize our game state
-        .add_systems(Startup, setup)
+        .add_systems(Startup, setup_camera)
         .add_systems(Update, restart_game.run_if(in_state(AppState::GameOver)))
         .run();
 }
@@ -100,12 +103,33 @@ fn setup(mut commands: Commands) {
     ));
 }
 
+
+fn handle_pause_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    app_state: Res<State<AppState>>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        match app_state.get() {
+            AppState::InGame => {
+                println!("Game paused");
+                next_state.set(AppState::Paused);
+            }
+            AppState::Paused => {
+                println!("Game resumed");
+                next_state.set(AppState::InGame);
+            }
+            _ => {}
+        }
+    }
+}
+
 fn restart_game(
     mut next_state: ResMut<NextState<AppState>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
-        next_state.set(AppState::InGame);
-        println!("Restarting game!");
+        next_state.set(AppState::MainMenu);
+        println!("Returning to main menu!");
     }
 }

@@ -17,7 +17,7 @@ impl Plugin for PlayerPlugin {
             )
                 .run_if(in_state(AppState::InGame)),
         )
-        .add_systems(OnEnter(AppState::InGame), reset_players_on_restart);
+        .add_systems(OnExit(AppState::InGame), cleanup_game_entities);
     }
 }
 
@@ -99,14 +99,89 @@ fn update_player_facing_direction(
     }
 }
 
-fn reset_players_on_restart(mut query: Query<(&mut Health, &mut Transform, &Player)>) {
+fn reset_players_on_restart(
+    mut commands: Commands,
+    mut query: Query<(&mut Health, &mut Transform, &Player)>,
+) {
     println!("Resetting player stats...");
     for (mut health, mut transform, player) in query.iter_mut() {
         health.current = health.max;
-        if player.id == 1 { 
+        if player.id == 1 {
             transform.translation = Vec3::new(-200.0, 0.0, 0.0);
         } else {
             transform.translation = Vec3::new(200.0, 0.0, 0.0);
         }
+    }
+}
+
+// New system to setup game entities when entering InGame state
+pub fn setup_game_entities(mut commands: Commands) {
+    println!("Setting up game entities...");
+
+    // Some ground for the players to stand on
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgb(0.7, 0.7, 0.8),
+                custom_size: Some(Vec2::new(1200.0, 50.0)),
+                ..default()
+            },
+            transform: Transform::from_xyz(0.0, -200.0, 0.0),
+            ..default()
+        },
+        RigidBody::Static,
+        Collider::rectangle(1200.0, 50.0),
+    ));
+
+    // -- Player 1 --
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgb(1.0, 0.0, 0.0),
+                custom_size: Some(Vec2::new(50.0, 100.0)),
+                ..default()
+            },
+            transform: Transform::from_xyz(-200.0, 0.0, 0.0),
+            ..default()
+        },
+        RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED,
+        Collider::rectangle(50.0, 100.0),
+        combat::Hurtbox,
+        Player { id: 1 },
+        Health { current: 100, max: 100 },
+        MoveSpeed(300.0),
+        FacingDirection::Right,
+    ));
+
+    // -- Player 2 --
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgb(0.0, 0.0, 1.0),
+                custom_size: Some(Vec2::new(50.0, 100.0)),
+                ..default()
+            },
+            transform: Transform::from_xyz(200.0, 0.0, 0.0),
+            ..default()
+        },
+        RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED,
+        Collider::rectangle(50.0, 100.0),
+        combat::Hurtbox,
+        Player { id: 2 },
+        Health { current: 100, max: 100 },
+        MoveSpeed(300.0),
+        FacingDirection::Left,
+    ));
+}
+
+fn cleanup_game_entities(
+    mut commands: Commands,
+    query: Query<Entity, Or<(With<Player>, With<RigidBody>)>>,
+) {
+    println!("Cleaning up game entities...");
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }
