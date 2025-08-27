@@ -24,22 +24,22 @@ fn main() {
                 }),
                 ..default()
             }),
-            PhysicsPlugins::default(), // Add the physics engine plugin
-            // Optional: for visualizing colliders
+            PhysicsPlugins::default(),
             // PhysicsDebugPlugin::default(), 
             PlayerPlugin,
             CombatPlugin,
             UiPlugin,
             MenuPlugin,
         ))
-        .init_state::<AppState>() // Initialize our game state
+        .init_state::<AppState>()
         .add_systems(Startup, setup_camera)
+        .add_systems(OnEnter(AppState::InGame), setup) // <-- Add this line
         .add_systems(Update, restart_game.run_if(in_state(AppState::GameOver)))
         .run();
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    // Removed: commands.spawn(Camera2dBundle::default());
 
     // Some ground for the players to stand on
     commands.spawn((
@@ -132,4 +132,8 @@ fn restart_game(
         next_state.set(AppState::MainMenu);
         println!("Returning to main menu!");
     }
+}
+
+fn setup_camera(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
 }

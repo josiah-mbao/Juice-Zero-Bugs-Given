@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 
 use crate::game_state::AppState;
+use crate::combat;
 use crate::combat::SpawnHitboxEvent;
 
 pub struct PlayerPlugin;

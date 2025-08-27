@@ -78,10 +78,10 @@ fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         }).with_children(|parent| {
             // Start Game Button
-            spawn_menu_button(parent, "START GAME", MenuAction::StartGame, &asset_server);
+            spawn_menu_button(parent, "START GAME", MenuAction::StartGame);
             
             // Quit Button
-            spawn_menu_button(parent, "QUIT", MenuAction::Quit, &asset_server);
+            spawn_menu_button(parent, "QUIT", MenuAction::Quit);
         });
 
         // Controls info
@@ -100,7 +100,6 @@ fn spawn_menu_button(
     parent: &mut ChildBuilder,
     text: &str,
     action: MenuAction,
-    asset_server: &Res<AssetServer>,
 ) {
     parent.spawn((
         ButtonBundle {
