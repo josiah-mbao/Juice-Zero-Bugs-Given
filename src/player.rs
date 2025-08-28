@@ -196,10 +196,7 @@ pub fn setup_game_entities(mut commands: Commands) {
 
 type GameEntityQuery<'w, 's> = Query<'w, 's, Entity, Or<(With<Player>, With<RigidBody>)>>;
 
-fn cleanup_game_entities(
-    mut commands: Commands,
-    query: GameEntityQuery,
-) {
+fn cleanup_game_entities(mut commands: Commands, query: GameEntityQuery) {
     println!("Cleaning up game entities...");
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
