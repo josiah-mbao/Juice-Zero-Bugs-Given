@@ -15,19 +15,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Install system dependencies for Bevy (audio, input, graphics)
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev pkg-config
+          sudo apt-get install -y \
+            libasound2-dev \
+            libudev-dev \
+            libx11-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            pkg-config
 
-      # Install Rust
+      # Install Rust stable toolchain
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
 
-      # Cache dependencies (faster builds)
+      # Cache Cargo dependencies
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
@@ -43,6 +50,14 @@ jobs:
       - name: Build
         run: cargo build --verbose
 
-      # Run tests (if you add unit tests later)
+      # Run tests (if you add unit tests)
       - name: Run tests
         run: cargo test --verbose
+
+      # Enforce formatting
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      # Lint with Clippy (fail on warnings)
+      - name: Run Clippy
+        run: cargo clippy -- -D warnings
