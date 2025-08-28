@@ -6,8 +6,12 @@ pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(AppState::MainMenu), setup_main_menu)
+            .add_systems(OnEnter(AppState::MainMenu), spawn_menu_background)
             .add_systems(Update, main_menu_interaction.run_if(in_state(AppState::MainMenu)))
-            .add_systems(OnExit(AppState::MainMenu), cleanup_menu);
+            .add_systems(Update, menu_button_color.run_if(in_state(AppState::MainMenu)))
+            .add_systems(Update, animate_menu_background.run_if(in_state(AppState::MainMenu)))
+            .add_systems(OnExit(AppState::MainMenu), cleanup_menu)
+            .add_systems(OnExit(AppState::MainMenu), cleanup_menu_background);
     }
 }
 
@@ -21,6 +25,9 @@ struct MenuButtonAction {
 #[derive(Component)]
 struct MainMenu;
 
+#[derive(Component)]
+struct MenuBackgroundCircle;
+
 #[derive(Debug, Clone, Copy)]
 enum MenuAction {
     StartGame,
@@ -29,7 +36,7 @@ enum MenuAction {
 
 // -- Systems --
 
-fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup_main_menu(mut commands: Commands) {
     commands.spawn((
         NodeBundle {
             style: Style {
@@ -79,7 +86,7 @@ fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
         }).with_children(|parent| {
             // Start Game Button
             spawn_menu_button(parent, "START GAME", MenuAction::StartGame);
-            
+
             // Quit Button
             spawn_menu_button(parent, "QUIT", MenuAction::Quit);
         });
@@ -149,7 +156,58 @@ fn main_menu_interaction(
     }
 }
 
+fn menu_button_color(
+    mut query: Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<Button>)>,
+) {
+    for (interaction, mut color) in &mut query {
+        *color = match *interaction {
+            Interaction::Pressed => Color::srgb(0.25, 0.25, 0.35).into(),
+            Interaction::Hovered => Color::srgb(0.2, 0.2, 0.3).into(),
+            Interaction::None => Color::srgb(0.15, 0.15, 0.2).into(),
+        };
+    }
+}
+
+fn spawn_menu_background(mut commands: Commands) {
+    use rand::Rng; // <-- Import the trait
+    let mut rng = rand::thread_rng();
+    for _ in 0..20 {
+        let x = rng.gen_range(-600.0..600.0);
+        let y = rng.gen_range(-300.0..300.0);
+        let scale = rng.gen_range(0.5..2.0);
+        commands.spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    color: Color::srgba(0.3, 0.6, 1.0, 0.15),
+                    custom_size: Some(Vec2::splat(80.0 * scale)),
+                    ..default()
+                },
+                transform: Transform::from_xyz(x, y, -1.0),
+                ..default()
+            },
+            MenuBackgroundCircle,
+        ));
+    }
+}
+
+fn animate_menu_background(
+    time: Res<Time>,
+    mut query: Query<&mut Transform, With<MenuBackgroundCircle>>,
+) {
+    let t = time.elapsed_seconds();
+    for (i, mut transform) in query.iter_mut().enumerate() {
+        transform.translation.y += (t.sin() + i as f32 * 0.1).sin() * 0.5;
+        transform.translation.x += (t.cos() + i as f32 * 0.1).cos() * 0.2;
+    }
+}
+
 fn cleanup_menu(mut commands: Commands, query: Query<Entity, With<MainMenu>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn cleanup_menu_background(mut commands: Commands, query: Query<Entity, With<MenuBackgroundCircle>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
