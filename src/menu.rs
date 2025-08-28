@@ -176,12 +176,12 @@ fn menu_button_color(
 }
 
 fn spawn_menu_background(mut commands: Commands) {
-    use rand::Rng; // <-- Import the trait
-    let mut rng = rand::thread_rng();
+    use rand::Rng;
+    let mut rng = rand::rng();
     for _ in 0..20 {
-        let x = rng.gen_range(-600.0..600.0);
-        let y = rng.gen_range(-300.0..300.0);
-        let scale = rng.gen_range(0.5..2.0);
+        let x = rng.random_range(-600.0..600.0);
+        let y = rng.random_range(-300.0..300.0);
+        let scale = rng.random_range(0.5..2.0);
         commands.spawn((
             SpriteBundle {
                 sprite: Sprite {
