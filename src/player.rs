@@ -110,8 +110,9 @@ fn update_player_facing_direction(
     }
 }
 
+#[allow(dead_code)]
 fn reset_players_on_restart(
-    mut commands: Commands,
+    _commands: Commands,
     mut query: Query<(&mut Health, &mut Transform, &Player)>,
 ) {
     println!("Resetting player stats...");
@@ -125,7 +126,7 @@ fn reset_players_on_restart(
     }
 }
 
-// New system to setup game entities when entering InGame state
+#[allow(dead_code)]
 pub fn setup_game_entities(mut commands: Commands) {
     println!("Setting up game entities...");
 
@@ -193,9 +194,11 @@ pub fn setup_game_entities(mut commands: Commands) {
     ));
 }
 
+type GameEntityQuery<'w, 's> = Query<'w, 's, Entity, Or<(With<Player>, With<RigidBody>)>>;
+
 fn cleanup_game_entities(
     mut commands: Commands,
-    query: Query<Entity, Or<(With<Player>, With<RigidBody>)>>,
+    query: GameEntityQuery,
 ) {
     println!("Cleaning up game entities...");
     for entity in query.iter() {
