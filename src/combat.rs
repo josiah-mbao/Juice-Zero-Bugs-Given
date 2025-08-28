@@ -38,7 +38,6 @@ pub struct DamageEvent {
     pub damage: i32,
 }
 
-
 // -- Components --
 
 #[derive(Component)]
@@ -69,19 +68,21 @@ fn spawn_hitbox(
                 FacingDirection::Left => Vec2::new(-60.0, 0.0),
             };
 
-            commands.spawn((
-                SpatialBundle::from_transform(Transform::from_translation(offset.extend(0.0))),
-                // Corrected: Use .rectangle() instead of .cuboid()
-                Collider::rectangle(70.0, 40.0),
-                Sensor,
-                Hitbox {
-                    damage: 10,
-                    owner: event.attacker,
-                },
-                HitboxDuration {
-                    timer: Timer::new(Duration::from_millis(150), TimerMode::Once),
-                },
-            )).set_parent(event.attacker);
+            commands
+                .spawn((
+                    SpatialBundle::from_transform(Transform::from_translation(offset.extend(0.0))),
+                    // Corrected: Use .rectangle() instead of .cuboid()
+                    Collider::rectangle(70.0, 40.0),
+                    Sensor,
+                    Hitbox {
+                        damage: 10,
+                        owner: event.attacker,
+                    },
+                    HitboxDuration {
+                        timer: Timer::new(Duration::from_millis(150), TimerMode::Once),
+                    },
+                ))
+                .set_parent(event.attacker);
         }
     }
 }
@@ -108,15 +109,18 @@ fn detect_collisions(
 ) {
     for Collision(contacts) in collisions.read() {
         // Determine which entity is the hitbox and which is the hurtbox
-        let (hitbox_entity, hurtbox_entity) = 
-            if hitbox_query.contains(contacts.entity1) && hurtbox_query.contains(contacts.entity2) {
-                (contacts.entity1, contacts.entity2)
-            } else if hitbox_query.contains(contacts.entity2) && hurtbox_query.contains(contacts.entity1) {
-                (contacts.entity2, contacts.entity1)
-            } else {
-                continue; // Not a hitbox-hurtbox collision
-            };
-        
+        let (hitbox_entity, hurtbox_entity) = if hitbox_query.contains(contacts.entity1)
+            && hurtbox_query.contains(contacts.entity2)
+        {
+            (contacts.entity1, contacts.entity2)
+        } else if hitbox_query.contains(contacts.entity2)
+            && hurtbox_query.contains(contacts.entity1)
+        {
+            (contacts.entity2, contacts.entity1)
+        } else {
+            continue; // Not a hitbox-hurtbox collision
+        };
+
         if let Ok(hitbox) = hitbox_query.get(hitbox_entity) {
             // Prevent hitting yourself
             if hitbox.owner != hurtbox_entity {
@@ -125,7 +129,7 @@ fn detect_collisions(
                     target: hurtbox_entity,
                     damage: hitbox.damage,
                 });
-                
+
                 // Added: Despawn the hitbox immediately so it can't hit again.
                 commands.entity(hitbox_entity).despawn_recursive();
             }
@@ -149,7 +153,7 @@ fn apply_damage(
 fn check_for_game_over(
     mut next_state: ResMut<NextState<AppState>>,
     query: Query<&Health, With<Player>>,
-    ) {
+) {
     for health in query.iter() {
         if health.current <= 0 {
             println!("A player has been defeated! Game Over.");

@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::game_state::AppState;
+use bevy::prelude::*;
 
 pub struct MenuPlugin;
 
@@ -7,9 +7,18 @@ impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(AppState::MainMenu), setup_main_menu)
             .add_systems(OnEnter(AppState::MainMenu), spawn_menu_background)
-            .add_systems(Update, main_menu_interaction.run_if(in_state(AppState::MainMenu)))
-            .add_systems(Update, menu_button_color.run_if(in_state(AppState::MainMenu)))
-            .add_systems(Update, animate_menu_background.run_if(in_state(AppState::MainMenu)))
+            .add_systems(
+                Update,
+                main_menu_interaction.run_if(in_state(AppState::MainMenu)),
+            )
+            .add_systems(
+                Update,
+                menu_button_color.run_if(in_state(AppState::MainMenu)),
+            )
+            .add_systems(
+                Update,
+                animate_menu_background.run_if(in_state(AppState::MainMenu)),
+            )
             .add_systems(OnExit(AppState::MainMenu), cleanup_menu)
             .add_systems(OnExit(AppState::MainMenu), cleanup_menu_background);
     }
@@ -103,34 +112,32 @@ fn setup_main_menu(mut commands: Commands) {
     });
 }
 
-fn spawn_menu_button(
-    parent: &mut ChildBuilder,
-    text: &str,
-    action: MenuAction,
-) {
-    parent.spawn((
-        ButtonBundle {
-            style: Style {
-                width: Val::Px(200.0),
-                height: Val::Px(65.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
+fn spawn_menu_button(parent: &mut ChildBuilder, text: &str, action: MenuAction) {
+    parent
+        .spawn((
+            ButtonBundle {
+                style: Style {
+                    width: Val::Px(200.0),
+                    height: Val::Px(65.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                background_color: Color::srgb(0.15, 0.15, 0.2).into(),
                 ..default()
             },
-            background_color: Color::srgb(0.15, 0.15, 0.2).into(),
-            ..default()
-        },
-        MenuButtonAction { action },
-    )).with_children(|parent| {
-        parent.spawn(TextBundle::from_section(
-            text,
-            TextStyle {
-                font_size: 24.0,
-                color: Color::WHITE,
-                ..default()
-            },
-        ));
-    });
+            MenuButtonAction { action },
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                text,
+                TextStyle {
+                    font_size: 24.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ));
+        });
 }
 
 fn main_menu_interaction(
@@ -207,7 +214,10 @@ fn cleanup_menu(mut commands: Commands, query: Query<Entity, With<MainMenu>>) {
     }
 }
 
-fn cleanup_menu_background(mut commands: Commands, query: Query<Entity, With<MenuBackgroundCircle>>) {
+fn cleanup_menu_background(
+    mut commands: Commands,
+    query: Query<Entity, With<MenuBackgroundCircle>>,
+) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }

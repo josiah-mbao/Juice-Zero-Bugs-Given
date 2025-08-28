@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 
-use crate::game_state::AppState;
 use crate::combat;
 use crate::combat::SpawnHitboxEvent;
+use crate::game_state::AppState;
 
 pub struct PlayerPlugin;
 
@@ -53,12 +53,22 @@ fn player_movement(
 ) {
     for (mut velocity, player, move_speed) in query.iter_mut() {
         let mut direction = 0.0;
-        if player.id == 1 { // Player 1 Controls (A, D)
-            if keyboard_input.pressed(KeyCode::KeyA) { direction -= 1.0; }
-            if keyboard_input.pressed(KeyCode::KeyD) { direction += 1.0; }
-        } else { // Player 2 Controls (Arrows)
-            if keyboard_input.pressed(KeyCode::ArrowLeft) { direction -= 1.0; }
-            if keyboard_input.pressed(KeyCode::ArrowRight) { direction += 1.0; }
+        if player.id == 1 {
+            // Player 1 Controls (A, D)
+            if keyboard_input.pressed(KeyCode::KeyA) {
+                direction -= 1.0;
+            }
+            if keyboard_input.pressed(KeyCode::KeyD) {
+                direction += 1.0;
+            }
+        } else {
+            // Player 2 Controls (Arrows)
+            if keyboard_input.pressed(KeyCode::ArrowLeft) {
+                direction -= 1.0;
+            }
+            if keyboard_input.pressed(KeyCode::ArrowRight) {
+                direction += 1.0;
+            }
         }
         velocity.x = direction * move_speed.0;
     }
@@ -150,7 +160,10 @@ pub fn setup_game_entities(mut commands: Commands) {
         Collider::rectangle(50.0, 100.0),
         combat::Hurtbox,
         Player { id: 1 },
-        Health { current: 100, max: 100 },
+        Health {
+            current: 100,
+            max: 100,
+        },
         MoveSpeed(300.0),
         FacingDirection::Right,
     ));
@@ -171,7 +184,10 @@ pub fn setup_game_entities(mut commands: Commands) {
         Collider::rectangle(50.0, 100.0),
         combat::Hurtbox,
         Player { id: 2 },
-        Health { current: 100, max: 100 },
+        Health {
+            current: 100,
+            max: 100,
+        },
         MoveSpeed(300.0),
         FacingDirection::Left,
     ));

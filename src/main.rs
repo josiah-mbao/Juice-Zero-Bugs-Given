@@ -25,7 +25,7 @@ fn main() {
                 ..default()
             }),
             PhysicsPlugins::default(),
-            // PhysicsDebugPlugin::default(), 
+            // PhysicsDebugPlugin::default(),
             PlayerPlugin,
             CombatPlugin,
             UiPlugin,
@@ -75,7 +75,10 @@ fn setup(mut commands: Commands) {
         Collider::rectangle(50.0, 100.0),
         combat::Hurtbox,
         Player { id: 1 },
-        Health { current: 100, max: 100 },
+        Health {
+            current: 100,
+            max: 100,
+        },
         MoveSpeed(300.0),
         FacingDirection::Right,
     ));
@@ -97,12 +100,14 @@ fn setup(mut commands: Commands) {
         Collider::rectangle(50.0, 100.0),
         combat::Hurtbox,
         Player { id: 2 },
-        Health { current: 100, max: 100 },
+        Health {
+            current: 100,
+            max: 100,
+        },
         MoveSpeed(300.0),
         FacingDirection::Left,
     ));
 }
-
 
 fn handle_pause_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
