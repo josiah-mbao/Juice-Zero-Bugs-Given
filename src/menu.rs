@@ -43,73 +43,81 @@ enum MenuAction {
     Quit,
 }
 
+// A type alias for the filter used in button interaction queries.
+// This avoids the `type_complexity` warning.
+type InteractingButtonFilter = (Changed<Interaction>, With<Button>);
+
 // -- Systems --
 
 fn setup_main_menu(mut commands: Commands) {
-    commands.spawn((
-        NodeBundle {
-            style: Style {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                position_type: PositionType::Absolute,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(20.0),
+    commands
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    position_type: PositionType::Absolute,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(20.0),
+                    ..default()
+                },
+                background_color: Color::srgb(0.1, 0.1, 0.15).into(),
                 ..default()
             },
-            background_color: Color::srgb(0.1, 0.1, 0.15).into(),
-            ..default()
-        },
-        MainMenu,
-    )).with_children(|parent| {
-        // Title
-        parent.spawn(TextBundle::from_section(
-            "JUICE: ZERO BUGS GIVEN",
-            TextStyle {
-                font_size: 60.0,
-                color: Color::WHITE,
-                ..default()
-            },
-        ));
+            MainMenu,
+        ))
+        .with_children(|parent| {
+            // Title
+            parent.spawn(TextBundle::from_section(
+                "JUICE: ZERO BUGS GIVEN",
+                TextStyle {
+                    font_size: 60.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ));
 
-        // Subtitle
-        parent.spawn(TextBundle::from_section(
-            "Fight the bugs that Rust was designed to defeat!",
-            TextStyle {
-                font_size: 24.0,
-                color: Color::srgb(0.8, 0.8, 0.8),
-                ..default()
-            },
-        ));
+            // Subtitle
+            parent.spawn(TextBundle::from_section(
+                "Fight the bugs that Rust was designed to defeat!",
+                TextStyle {
+                    font_size: 24.0,
+                    color: Color::srgb(0.8, 0.8, 0.8),
+                    ..default()
+                },
+            ));
 
-        parent.spawn(NodeBundle {
-            style: Style {
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                row_gap: Val::Px(15.0),
-                margin: UiRect::top(Val::Px(40.0)),
-                ..default()
-            },
-            ..default()
-        }).with_children(|parent| {
-            // Start Game Button
-            spawn_menu_button(parent, "START GAME", MenuAction::StartGame);
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        row_gap: Val::Px(15.0),
+                        margin: UiRect::top(Val::Px(40.0)),
+                        ..default()
+                    },
+                    ..default()
+                })
+                .with_children(|parent| {
+                    // Start Game Button
+                    spawn_menu_button(parent, "START GAME", MenuAction::StartGame);
 
-            // Quit Button
-            spawn_menu_button(parent, "QUIT", MenuAction::Quit);
+                    // Quit Button
+                    spawn_menu_button(parent, "QUIT", MenuAction::Quit);
+                });
+
+            // Controls info
+            parent.spawn(TextBundle::from_section(
+                "Controls: Player 1 - A/D to move, F to attack | Player 2 - Arrows to move, L to attack",
+                TextStyle {
+                    font_size: 16.0,
+                    color: Color::srgb(0.6, 0.6, 0.6),
+                    ..default()
+                },
+            ));
         });
-
-        // Controls info
-        parent.spawn(TextBundle::from_section(
-            "Controls: Player 1 - A/D to move, F to attack | Player 2 - Arrows to move, L to attack",
-            TextStyle {
-                font_size: 16.0,
-                color: Color::srgb(0.6, 0.6, 0.6),
-                ..default()
-            },
-        ));
-    });
 }
 
 fn spawn_menu_button(parent: &mut ChildBuilder, text: &str, action: MenuAction) {
@@ -141,10 +149,7 @@ fn spawn_menu_button(parent: &mut ChildBuilder, text: &str, action: MenuAction) 
 }
 
 fn main_menu_interaction(
-    mut interaction_query: Query<
-        (&Interaction, &MenuButtonAction),
-        (Changed<Interaction>, With<Button>),
-    >,
+    mut interaction_query: Query<(&Interaction, &MenuButtonAction), InteractingButtonFilter>,
     mut app_state: ResMut<NextState<AppState>>,
 ) {
     for (interaction, button_action) in &mut interaction_query {
@@ -164,7 +169,7 @@ fn main_menu_interaction(
 }
 
 fn menu_button_color(
-    mut query: Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<Button>)>,
+    mut query: Query<(&Interaction, &mut BackgroundColor), InteractingButtonFilter>,
 ) {
     for (interaction, mut color) in &mut query {
         *color = match *interaction {
@@ -177,6 +182,7 @@ fn menu_button_color(
 
 fn spawn_menu_background(mut commands: Commands) {
     use rand::Rng;
+    // Corrected: Reverted to the non-deprecated function names for your rand version.
     let mut rng = rand::rng();
     for _ in 0..20 {
         let x = rng.random_range(-600.0..600.0);

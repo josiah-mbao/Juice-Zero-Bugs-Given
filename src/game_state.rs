@@ -7,5 +7,6 @@ pub enum AppState {
     MainMenu,
     InGame, // For now, we start directly in the game
     GameOver,
+    #[allow(dead_code)]
     Paused,
 }

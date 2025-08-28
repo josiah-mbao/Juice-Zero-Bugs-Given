@@ -109,6 +109,7 @@ fn setup(mut commands: Commands) {
     ));
 }
 
+#[allow(dead_code)]
 fn handle_pause_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     app_state: Res<State<AppState>>,
