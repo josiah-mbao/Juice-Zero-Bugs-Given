@@ -1,5 +1,8 @@
 # Juice: Zero Bugs Given
 
+<img width="1392" height="860" alt="Screenshot 2025-08-28 at 10 08 21" src="https://github.com/user-attachments/assets/ccddc26f-4967-428d-a8cd-e5d3f22b9d9e" />
+
+
 **Juice: Zero Bugs Given** is a Rust-powered 2D fighter game where you play as *Juice*, battling bosses inspired by infamous programming nightmares like null pointers, undefined behavior, and data races. Each battle represents a classic bug that Rust was designed to defeat, blending coding humor with arcade-style action.
 
 ---
@@ -18,7 +21,7 @@
 
 ## 🛠 Tech Stack
 - **Rust** (game logic, systems)
-- [Bevy](https://bevyengine.org/) / [Macroquad](https://github.com/not-fl3/macroquad) / [ggez](https://github.com/ggez/ggez) (2D game engine – TBD)
+- [Bevy](https://bevyengine.org/) (2D game engine)
 - Cargo for dependency management
 
 ---
