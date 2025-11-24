@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
+use std::time::Duration;
 
 use crate::combat;
 use crate::combat::SpawnHitboxEvent;
@@ -13,7 +14,8 @@ impl Plugin for PlayerPlugin {
             Update,
             (
                 player_movement,
-                player_attack,
+                update_attack_cooldowns,
+                player_attack.after(update_attack_cooldowns),
                 update_player_facing_direction,
             )
                 .run_if(in_state(AppState::InGame)),
@@ -59,6 +61,11 @@ pub struct Health {
 
 #[derive(Component)]
 pub struct MoveSpeed(pub f32);
+
+#[derive(Component)]
+pub struct AttackCooldown {
+    pub timer: Timer,
+}
 
 // -- Systems --
 
@@ -137,10 +144,19 @@ fn player_movement(
     }
 }
 
+fn update_attack_cooldowns(
+    time: Res<Time>,
+    mut query: Query<&mut AttackCooldown>,
+) {
+    for mut cooldown in query.iter_mut() {
+        cooldown.timer.tick(time.delta());
+    }
+}
+
 fn player_attack(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    query: Query<(Entity, &Player, &ControlType, &Transform)>,
+    mut query: Query<(Entity, &Player, &ControlType, &Transform, &mut AttackCooldown)>,
     player_transforms: Query<(&Transform, &ControlType)>,
     mut spawn_hitbox_writer: EventWriter<SpawnHitboxEvent>,
 ) {
@@ -152,10 +168,15 @@ fn player_attack(
         }
     }
 
-    for (entity, player, control, transform) in query.iter() {
+    for (entity, player, control, transform, mut cooldown) in query.iter_mut() {
+        // Only allow attacks if cooldown is finished
+        if !cooldown.timer.finished() {
+            continue;
+        }
+
         let should_attack = match control {
             ControlType::Human => {
-                // Human player controls
+                // Human player controls - press and release required (no spamming)
                 keyboard_input.just_pressed(if player.id == 1 { KeyCode::KeyF } else { KeyCode::KeyL })
             }
             ControlType::AI(boss_type) => {
@@ -193,6 +214,9 @@ fn player_attack(
         };
 
         if should_attack {
+            // Start cooldown timer
+            cooldown.timer.reset();
+
             // Send one attack event per frame
             spawn_hitbox_writer.send(SpawnHitboxEvent { attacker: entity });
         }

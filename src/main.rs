@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
+use std::time::Duration;
 
 // Import our modules
 mod combat;
@@ -11,7 +12,7 @@ mod ui;
 use combat::CombatPlugin;
 use game_state::{AppState, Winner};
 use menu::MenuPlugin;
-use player::{BossType, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin};
+use player::{AttackCooldown, BossType, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin};
 use ui::UiPlugin;
 
 fn main() {
@@ -97,6 +98,9 @@ fn setup(mut commands: Commands) {
         },
         MoveSpeed(300.0),
         FacingDirection::Right,
+        AttackCooldown {
+            timer: Timer::new(Duration::from_millis(300), TimerMode::Once),
+        },
     ));
 
     // -- Player 2 (AI Boss - starting with NullPointer) --
@@ -123,6 +127,9 @@ fn setup(mut commands: Commands) {
         },
         MoveSpeed(300.0),
         FacingDirection::Left,
+        AttackCooldown {
+            timer: Timer::new(Duration::from_millis(300), TimerMode::Once),
+        },
     ));
 }
 

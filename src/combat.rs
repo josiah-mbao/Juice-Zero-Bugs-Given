@@ -75,7 +75,7 @@ fn spawn_hitbox(
                     Collider::rectangle(70.0, 40.0),
                     Sensor,
                     Hitbox {
-                        damage: 10,
+                        damage: 5,
                         owner: event.attacker,
                     },
                     HitboxDuration {
