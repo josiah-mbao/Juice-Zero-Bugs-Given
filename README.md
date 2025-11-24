@@ -10,23 +10,31 @@
 
 ---
 
-## 🚧 Project Status
+## 📊 Project Status
 
-This game is currently in **active development**. The core 1v1 mechanics are in place, but new features, "bug" bosses, and polish are being added.
+**✅ Core Features Complete**: Full single-player battle system with AI opponents implemented!
+
+- **Combat System**: ✅ Complete with hitboxes, hurtboxes, health management, and damage calculations
+- **AI Boss System**: ✅ Fully implemented with unique behaviors for each programming bug type
+- **UI/UX**: ✅ Polished interface with health bars, labels, and winner announcements
+- **Arena**: ✅ Contained fighting environment with boundary walls
+- **Game Flow**: ✅ Complete menu system, pause, and restart functionality
 
 ---
 
 ## 🎮 Features
 
-* Play as **Juice**, the fearless fighter.
-* Local 1v1 multiplayer support.
-* Fight bosses modeled after common programming issues:
-    * **Null Pointer** – vanishes into nothingness.
-    * **Undefined Behavior** – glitchy, unpredictable attacks.
-    * **Data Race** – fights you in parallel with a clone.
-    * **Use After Free** – keeps coming back after defeat.
-    * **Buffer Overflow** – grows uncontrollably large.
-* Built with **Rust** for safety and performance.
+* **Single Player Battles**: Face off against AI bosses in intense 1v1 combat
+* **Multiple Unique Bosses**: Experience distinct AI opponents based on programming bugs:
+  * **🔸 Null Pointer** – Erratic movement, sporadic attacks, vanishing tactics
+  * **🔸 Undefined Behavior** – Unpredictable glitchy movement patterns, random timing attacks
+  * **🔸 Data Race** – Aggressive approach/retreat cycles, rapid-fire attacks when close
+  * **🔸 Use After Free** – Steady aggressive pursuit with regular interval attacks
+  * **🔸 Buffer Overflow** – Slow but powerful movement with devastating attacks
+* **Rich Visual Feedback**: Dynamic health bars with "PLAYER" vs "BOSS" labels, clear winner announcements
+* **Containment System**: Invisible arena boundaries prevent falling off screen edges
+* **Intuitive Controls**: Simple keyboard controls for accessible gameplay
+* **Built with Rust**: Memory-safe, high-performance architecture
 
 ---
 
