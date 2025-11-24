@@ -9,9 +9,9 @@ mod player;
 mod ui;
 
 use combat::CombatPlugin;
-use game_state::AppState;
+use game_state::{AppState, Winner};
 use menu::MenuPlugin;
-use player::{FacingDirection, Health, MoveSpeed, Player, PlayerPlugin};
+use player::{BossType, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin};
 use ui::UiPlugin;
 
 fn main() {
@@ -19,7 +19,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
-                    title: "Jucie: Zero Bugs Given".into(),
+                    title: "Juice: Zero Bugs Given".into(),
                     ..default()
                 }),
                 ..default()
@@ -32,6 +32,7 @@ fn main() {
             MenuPlugin,
         ))
         .init_state::<AppState>()
+        .insert_resource(Winner::default())
         .add_systems(Startup, setup_camera)
         .add_systems(OnEnter(AppState::InGame), setup) // <-- Add this line
         .add_systems(Update, restart_game.run_if(in_state(AppState::GameOver)))
@@ -58,7 +59,21 @@ fn setup(mut commands: Commands) {
         Collider::rectangle(1200.0, 50.0),
     ));
 
-    // -- Player 1 --
+    // Left boundary wall
+    commands.spawn((
+        TransformBundle::from_transform(Transform::from_xyz(-650.0, 0.0, 0.0)),
+        RigidBody::Static,
+        Collider::rectangle(50.0, 800.0), // Thin wall, tall enough for screen
+    ));
+
+    // Right boundary wall
+    commands.spawn((
+        TransformBundle::from_transform(Transform::from_xyz(650.0, 0.0, 0.0)),
+        RigidBody::Static,
+        Collider::rectangle(50.0, 800.0), // Thin wall, tall enough for screen
+    ));
+
+    // -- Player 1 (Human) --
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
@@ -75,6 +90,7 @@ fn setup(mut commands: Commands) {
         Collider::rectangle(50.0, 100.0),
         combat::Hurtbox,
         Player { id: 1 },
+        ControlType::Human,
         Health {
             current: 100,
             max: 100,
@@ -83,7 +99,7 @@ fn setup(mut commands: Commands) {
         FacingDirection::Right,
     ));
 
-    // -- Player 2 --
+    // -- Player 2 (AI Boss - starting with NullPointer) --
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
@@ -100,6 +116,7 @@ fn setup(mut commands: Commands) {
         Collider::rectangle(50.0, 100.0),
         combat::Hurtbox,
         Player { id: 2 },
+        ControlType::AI(BossType::NullPointer),
         Health {
             current: 100,
             max: 100,
@@ -133,8 +150,11 @@ fn handle_pause_input(
 fn restart_game(
     mut next_state: ResMut<NextState<AppState>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut winner: ResMut<Winner>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
+        winner.player_id = None;
+        winner.is_human_winner = None; // Reset winner
         next_state.set(AppState::MainMenu);
         println!("Returning to main menu!");
     }

@@ -10,3 +10,10 @@ pub enum AppState {
     #[allow(dead_code)]
     Paused,
 }
+
+// Resource to track the winner
+#[derive(Resource, Default)]
+pub struct Winner {
+    pub player_id: Option<u8>,
+    pub is_human_winner: Option<bool>,
+}

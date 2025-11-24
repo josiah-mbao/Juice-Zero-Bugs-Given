@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 use std::time::Duration;
 
-use crate::game_state::AppState;
-use crate::player::{FacingDirection, Health, Player};
+use crate::game_state::{AppState, Winner};
+use crate::player::{ControlType, FacingDirection, Health, Player};
 
 pub struct CombatPlugin;
 
@@ -152,13 +152,25 @@ fn apply_damage(
 
 fn check_for_game_over(
     mut next_state: ResMut<NextState<AppState>>,
-    query: Query<&Health, With<Player>>,
+    query: Query<(&Health, &Player, &ControlType)>,
+    mut winner: ResMut<Winner>,
 ) {
-    for health in query.iter() {
+    let mut players_alive = Vec::new();
+    let mut players_dead = Vec::new();
+
+    for (health, player, control) in query.iter() {
         if health.current <= 0 {
-            println!("A player has been defeated! Game Over.");
-            next_state.set(AppState::GameOver);
-            break;
+            players_dead.push((player.id, control));
+        } else {
+            players_alive.push((player.id, control));
         }
+    }
+
+    if !players_dead.is_empty() && players_alive.len() == 1 {
+        let (winner_id, winner_control) = players_alive[0];
+        winner.player_id = Some(winner_id);
+        winner.is_human_winner = Some(matches!(winner_control, ControlType::Human));
+        println!("Player {} wins! Game Over.", winner_id);
+        next_state.set(AppState::GameOver);
     }
 }

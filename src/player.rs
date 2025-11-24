@@ -29,6 +29,21 @@ pub struct Player {
     pub id: u8,
 }
 
+#[derive(Component)]
+pub enum ControlType {
+    Human,
+    AI(BossType),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BossType {
+    NullPointer,
+    UndefinedBehavior,
+    DataRace,
+    UseAfterFree,
+    BufferOverflow,
+}
+
 #[derive(Component, Default)]
 pub enum FacingDirection {
     #[default]
@@ -49,25 +64,73 @@ pub struct MoveSpeed(pub f32);
 
 fn player_movement(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut LinearVelocity, &Player, &MoveSpeed)>,
+    time: Res<Time>,
+    mut query: Query<(&mut LinearVelocity, &Player, &MoveSpeed, &ControlType, &Transform)>,
+    player_transforms: Query<(&Transform, &Player, &ControlType)>,
 ) {
-    for (mut velocity, player, move_speed) in query.iter_mut() {
+    let mut human_position = None;
+    for (transform, player, control) in player_transforms.iter() {
+        if matches!(control, ControlType::Human) {
+            human_position = Some(transform.translation.x);
+            break;
+        }
+    }
+
+    for (mut velocity, player, move_speed, control, transform) in query.iter_mut() {
         let mut direction = 0.0;
-        if player.id == 1 {
-            // Player 1 Controls (A, D)
-            if keyboard_input.pressed(KeyCode::KeyA) {
-                direction -= 1.0;
+        match control {
+            ControlType::Human => {
+                // Human player controls
+                if keyboard_input.pressed(KeyCode::KeyA) {
+                    direction -= 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyD) {
+                    direction += 1.0;
+                }
             }
-            if keyboard_input.pressed(KeyCode::KeyD) {
-                direction += 1.0;
-            }
-        } else {
-            // Player 2 Controls (Arrows)
-            if keyboard_input.pressed(KeyCode::ArrowLeft) {
-                direction -= 1.0;
-            }
-            if keyboard_input.pressed(KeyCode::ArrowRight) {
-                direction += 1.0;
+            ControlType::AI(boss_type) => {
+                // AI movement logic
+                if let Some(human_x) = human_position {
+                    let distance = human_x - transform.translation.x;
+                    let abs_distance = distance.abs();
+
+                    match boss_type {
+                        BossType::NullPointer => {
+                            // Vanishes occasionally - erratic movement
+                            let random_time = time.elapsed_seconds() % 3.0;
+                            if random_time > 2.5 {
+                                direction = rand::random::<f32>() * 4.0 - 2.0; // Random direction
+                            } else {
+                                // Normal movement towards player
+                                direction = if distance > 0.0 { 1.0 } else { -1.0 };
+                            }
+                        }
+                        BossType::UndefinedBehavior => {
+                            // Unpredictable erratic movement
+                            let random_time = time.elapsed_seconds().sin() as f32;
+                            direction = random_time * 2.0; // Sinusoidal erratic movement
+                        }
+                        BossType::DataRace => {
+                            // Aggressive approach and retreat
+                            let time_phase = (time.elapsed_seconds() * 2.0).sin() as f32;
+                            direction = if time_phase > 0.0 { 1.0 } else { -1.0 };
+                            if abs_distance < 100.0 {
+                                direction *= -1.0; // Retreat when close
+                            } else {
+                                // Move towards player when far
+                                direction = if distance > 0.0 { 1.0 } else { -1.0 };
+                            }
+                        }
+                        BossType::UseAfterFree => {
+                            // Steady aggressive approach
+                            direction = if distance > 0.0 { 1.0 } else { -1.0 };
+                        }
+                        BossType::BufferOverflow => {
+                            // Slow but steady towards player
+                            direction = if distance > 0.0 { 0.5 } else { -0.5 };
+                        }
+                    }
+                }
             }
         }
         velocity.x = direction * move_speed.0;
@@ -76,19 +139,61 @@ fn player_movement(
 
 fn player_attack(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    query: Query<(Entity, &Player)>,
+    time: Res<Time>,
+    query: Query<(Entity, &Player, &ControlType, &Transform)>,
+    player_transforms: Query<(&Transform, &ControlType)>,
     mut spawn_hitbox_writer: EventWriter<SpawnHitboxEvent>,
 ) {
-    for (entity, player) in query.iter() {
-        let attack_pressed = if player.id == 1 {
-            keyboard_input.just_pressed(KeyCode::KeyF)
-        } else {
-            keyboard_input.just_pressed(KeyCode::KeyL)
+    let mut human_position = None;
+    for (transform, control) in player_transforms.iter() {
+        if matches!(control, ControlType::Human) {
+            human_position = Some(transform.translation);
+            break;
+        }
+    }
+
+    for (entity, player, control, transform) in query.iter() {
+        let should_attack = match control {
+            ControlType::Human => {
+                // Human player controls
+                keyboard_input.just_pressed(if player.id == 1 { KeyCode::KeyF } else { KeyCode::KeyL })
+            }
+            ControlType::AI(boss_type) => {
+                // AI attack logic
+                if let Some(human_pos) = human_position {
+                    let distance = (human_pos - transform.translation).length();
+
+                    match boss_type {
+                        BossType::NullPointer => {
+                            // Sporadic attacks
+                            let phase = time.elapsed_seconds() % 4.0;
+                            distance < 150.0 && phase > 3.5
+                        }
+                        BossType::UndefinedBehavior => {
+                            // Random attacks
+                            distance < 200.0 && rand::random::<f32>() < 0.05
+                        }
+                        BossType::DataRace => {
+                            // Rapid attacks when close
+                            distance < 120.0 && (time.elapsed_seconds() * 3.0).fract() < 0.3
+                        }
+                        BossType::UseAfterFree => {
+                            // Steady attack intervals
+                            distance < 180.0 && (time.elapsed_seconds() % 2.0) < 0.2
+                        }
+                        BossType::BufferOverflow => {
+                            // Slow but powerful attacks
+                            distance < 160.0 && (time.elapsed_seconds() % 5.0) < 0.5
+                        }
+                    }
+                } else {
+                    false
+                }
+            }
         };
 
-        if attack_pressed {
-            // Instead of handling logic here, we send an event.
-            // This decouples the input from the combat system.
+        if should_attack {
+            // Send one attack event per frame
             spawn_hitbox_writer.send(SpawnHitboxEvent { attacker: entity });
         }
     }
