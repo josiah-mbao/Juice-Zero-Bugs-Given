@@ -106,6 +106,7 @@ fn detect_collisions(
     hitbox_query: Query<&Hitbox>,
     hurtbox_query: Query<&Hurtbox>,
     mut damage_writer: EventWriter<DamageEvent>,
+    transform_query: Query<&Transform>,
 ) {
     for Collision(contacts) in collisions.read() {
         // Determine which entity is the hitbox and which is the hurtbox
@@ -129,6 +130,26 @@ fn detect_collisions(
                     target: hurtbox_entity,
                     damage: hitbox.damage,
                 });
+
+                // Apply recoil forces to both attacker and defender
+                if let (Ok(attacker_transform), Ok(defender_transform)) = (
+                    transform_query.get(hitbox.owner),
+                    transform_query.get(hurtbox_entity),
+                ) {
+                    let direction_vec3 = (defender_transform.translation - attacker_transform.translation).normalize();
+                    let direction = Vec2::new(direction_vec3.x, direction_vec3.y); // Convert to Vec2
+                    let recoil_strength = 500.0; // Force to push players apart
+
+                    // Push defender away from attacker
+                    commands.entity(hurtbox_entity).insert(
+                        ExternalImpulse::new(direction * recoil_strength)
+                    );
+
+                    // Push attacker slightly backward
+                    commands.entity(hitbox.owner).insert(
+                        ExternalImpulse::new(-direction * recoil_strength * 0.3) // Less force for attacker
+                    );
+                }
 
                 // Added: Despawn the hitbox immediately so it can't hit again.
                 commands.entity(hitbox_entity).despawn_recursive();
