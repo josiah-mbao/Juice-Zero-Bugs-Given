@@ -62,27 +62,32 @@ fn spawn_hitbox(
     query: Query<&FacingDirection>,
 ) {
     for event in event_reader.read() {
-        if let Ok(facing) = query.get(event.attacker) {
-            let offset = match facing {
-                FacingDirection::Right => Vec2::new(60.0, 0.0),
-                FacingDirection::Left => Vec2::new(-60.0, 0.0),
-            };
+        match query.get(event.attacker) {
+            Ok(facing) => {
+                let offset = match facing {
+                    FacingDirection::Right => Vec2::new(60.0, 0.0),
+                    FacingDirection::Left => Vec2::new(-60.0, 0.0),
+                };
 
-            commands
-                .spawn((
-                    SpatialBundle::from_transform(Transform::from_translation(offset.extend(0.0))),
-                    // Corrected: Use .rectangle() instead of .cuboid()
-                    Collider::rectangle(70.0, 40.0),
-                    Sensor,
-                    Hitbox {
-                        damage: 5,
-                        owner: event.attacker,
-                    },
-                    HitboxDuration {
-                        timer: Timer::new(Duration::from_millis(150), TimerMode::Once),
-                    },
-                ))
-                .set_parent(event.attacker);
+                commands
+                    .spawn((
+                        SpatialBundle::from_transform(Transform::from_translation(offset.extend(0.0))),
+                        // Corrected: Use .rectangle() instead of .cuboid()
+                        Collider::rectangle(70.0, 40.0),
+                        Sensor,
+                        Hitbox {
+                            damage: 5,
+                            owner: event.attacker,
+                        },
+                        HitboxDuration {
+                            timer: Timer::new(Duration::from_millis(150), TimerMode::Once),
+                        },
+                    ))
+                    .set_parent(event.attacker);
+            }
+            Err(_) => {
+                tracing::warn!("Attempted to spawn hitbox for entity without FacingDirection component");
+            }
         }
     }
 }
@@ -136,18 +141,20 @@ fn detect_collisions(
                     transform_query.get(hitbox.owner),
                     transform_query.get(hurtbox_entity),
                 ) {
-                    let direction_vec3 = (defender_transform.translation - attacker_transform.translation).normalize();
+                    let direction_vec3 = (defender_transform.translation
+                        - attacker_transform.translation)
+                        .normalize();
                     let direction = Vec2::new(direction_vec3.x, direction_vec3.y); // Convert to Vec2
                     let recoil_strength = 500.0; // Force to push players apart
 
                     // Push defender away from attacker
-                    commands.entity(hurtbox_entity).insert(
-                        ExternalImpulse::new(direction * recoil_strength)
-                    );
+                    commands
+                        .entity(hurtbox_entity)
+                        .insert(ExternalImpulse::new(direction * recoil_strength));
 
                     // Push attacker slightly backward
                     commands.entity(hitbox.owner).insert(
-                        ExternalImpulse::new(-direction * recoil_strength * 0.3) // Less force for attacker
+                        ExternalImpulse::new(-direction * recoil_strength * 0.3), // Less force for attacker
                     );
                 }
 
@@ -164,9 +171,14 @@ fn apply_damage(
     mut query: Query<(&mut Health, &Player)>,
 ) {
     for event in damage_reader.read() {
-        if let Ok((mut health, player)) = query.get_mut(event.target) {
-            health.current = (health.current - event.damage).max(0);
-            println!("Player {} hit! {} HP left", player.id, health.current);
+        match query.get_mut(event.target) {
+            Ok((mut health, player)) => {
+                health.current = (health.current - event.damage).max(0);
+                tracing::info!("Player {} hit! {} HP left", player.id, health.current);
+            }
+            Err(_) => {
+                tracing::warn!("Tried to apply damage to entity without Health or Player components");
+            }
         }
     }
 }
@@ -191,7 +203,7 @@ fn check_for_game_over(
         let (winner_id, winner_control) = players_alive[0];
         winner.player_id = Some(winner_id);
         winner.is_human_winner = Some(matches!(winner_control, ControlType::Human));
-        println!("Player {} wins! Game Over.", winner_id);
+        tracing::info!("Player {} wins! Game Over.", winner_id);
         next_state.set(AppState::GameOver);
     }
 }

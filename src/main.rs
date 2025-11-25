@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 use std::time::Duration;
+use tracing_subscriber;
 
 // Import our modules
 mod combat;
@@ -12,10 +13,14 @@ mod ui;
 use combat::CombatPlugin;
 use game_state::{AppState, Winner};
 use menu::MenuPlugin;
-use player::{AttackCooldown, BossType, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin};
+use player::{
+    AttackCooldown, BossType, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin,
+};
 use ui::UiPlugin;
 
 fn main() {
+    tracing_subscriber::fmt::init();
+
     App::new()
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
@@ -142,11 +147,11 @@ fn handle_pause_input(
     if keyboard_input.just_pressed(KeyCode::Escape) {
         match app_state.get() {
             AppState::InGame => {
-                println!("Game paused");
+                tracing::info!("Game paused");
                 next_state.set(AppState::Paused);
             }
             AppState::Paused => {
-                println!("Game resumed");
+                tracing::info!("Game resumed");
                 next_state.set(AppState::InGame);
             }
             _ => {}
@@ -163,7 +168,7 @@ fn restart_game(
         winner.player_id = None;
         winner.is_human_winner = None; // Reset winner
         next_state.set(AppState::MainMenu);
-        println!("Returning to main menu!");
+        tracing::info!("Returning to main menu!");
     }
 }
 

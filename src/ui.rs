@@ -28,7 +28,6 @@ struct GameOverScreen;
 // -- Systems --
 
 fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>) {
-
     // Player 1 Health Container
     commands
         .spawn(NodeBundle {
@@ -66,30 +65,31 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
             ));
 
             // Health bar container
-            parent.spawn(NodeBundle {
-                style: Style {
-                    width: Val::Percent(100.0),
-                    height: Val::Px(30.0),
-                    border: UiRect::all(Val::Px(2.0)),
-                    ..default()
-                },
-                border_color: Color::WHITE.into(),
-                ..default()
-            })
-            .with_children(|parent| {
-                parent.spawn((
-                    NodeBundle {
-                        style: Style {
-                            width: Val::Percent(100.0),
-                            height: Val::Percent(100.0),
-                            ..default()
-                        },
-                        background_color: Color::srgb(0.1, 0.9, 0.1).into(),
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        width: Val::Percent(100.0),
+                        height: Val::Px(30.0),
+                        border: UiRect::all(Val::Px(2.0)),
                         ..default()
                     },
-                    HealthBar(1),
-                ));
-            });
+                    border_color: Color::WHITE.into(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn((
+                        NodeBundle {
+                            style: Style {
+                                width: Val::Percent(100.0),
+                                height: Val::Percent(100.0),
+                                ..default()
+                            },
+                            background_color: Color::srgb(0.1, 0.9, 0.1).into(),
+                            ..default()
+                        },
+                        HealthBar(1),
+                    ));
+                });
         });
 
     // Player 2 Health Container
@@ -129,30 +129,31 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
             ));
 
             // Health bar container
-            parent.spawn(NodeBundle {
-                style: Style {
-                    width: Val::Percent(100.0),
-                    height: Val::Px(30.0),
-                    border: UiRect::all(Val::Px(2.0)),
-                    ..default()
-                },
-                border_color: Color::WHITE.into(),
-                ..default()
-            })
-            .with_children(|parent| {
-                parent.spawn((
-                    NodeBundle {
-                        style: Style {
-                            width: Val::Percent(100.0),
-                            height: Val::Percent(100.0),
-                            ..default()
-                        },
-                        background_color: Color::srgb(0.1, 0.9, 0.1).into(),
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        width: Val::Percent(100.0),
+                        height: Val::Px(30.0),
+                        border: UiRect::all(Val::Px(2.0)),
                         ..default()
                     },
-                    HealthBar(2),
-                ));
-            });
+                    border_color: Color::WHITE.into(),
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn((
+                        NodeBundle {
+                            style: Style {
+                                width: Val::Percent(100.0),
+                                height: Val::Percent(100.0),
+                                ..default()
+                            },
+                            background_color: Color::srgb(0.1, 0.9, 0.1).into(),
+                            ..default()
+                        },
+                        HealthBar(2),
+                    ));
+                });
         });
 }
 
@@ -174,7 +175,8 @@ fn setup_game_over_screen(mut commands: Commands, winner: Res<Winner>) {
         Some(true) => "PLAYER WINS!",
         Some(false) => "BOSS WINS!",
         None => "GAME OVER",
-    }.to_string();
+    }
+    .to_string();
 
     commands
         .spawn((

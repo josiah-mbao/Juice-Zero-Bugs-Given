@@ -72,7 +72,13 @@ pub struct AttackCooldown {
 fn player_movement(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut query: Query<(&mut LinearVelocity, &Player, &MoveSpeed, &ControlType, &Transform)>,
+    mut query: Query<(
+        &mut LinearVelocity,
+        &Player,
+        &MoveSpeed,
+        &ControlType,
+        &Transform,
+    )>,
     player_transforms: Query<(&Transform, &Player, &ControlType)>,
 ) {
     let mut human_position = None;
@@ -144,10 +150,7 @@ fn player_movement(
     }
 }
 
-fn update_attack_cooldowns(
-    time: Res<Time>,
-    mut query: Query<&mut AttackCooldown>,
-) {
+fn update_attack_cooldowns(time: Res<Time>, mut query: Query<&mut AttackCooldown>) {
     for mut cooldown in query.iter_mut() {
         cooldown.timer.tick(time.delta());
     }
@@ -156,7 +159,13 @@ fn update_attack_cooldowns(
 fn player_attack(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut query: Query<(Entity, &Player, &ControlType, &Transform, &mut AttackCooldown)>,
+    mut query: Query<(
+        Entity,
+        &Player,
+        &ControlType,
+        &Transform,
+        &mut AttackCooldown,
+    )>,
     player_transforms: Query<(&Transform, &ControlType)>,
     mut spawn_hitbox_writer: EventWriter<SpawnHitboxEvent>,
 ) {
@@ -177,7 +186,11 @@ fn player_attack(
         let should_attack = match control {
             ControlType::Human => {
                 // Human player controls - press and release required (no spamming)
-                keyboard_input.just_pressed(if player.id == 1 { KeyCode::KeyF } else { KeyCode::KeyL })
+                keyboard_input.just_pressed(if player.id == 1 {
+                    KeyCode::KeyF
+                } else {
+                    KeyCode::KeyL
+                })
             }
             ControlType::AI(boss_type) => {
                 // AI attack logic
@@ -244,7 +257,7 @@ fn reset_players_on_restart(
     _commands: Commands,
     mut query: Query<(&mut Health, &mut Transform, &Player)>,
 ) {
-    println!("Resetting player stats...");
+    tracing::info!("Resetting player stats...");
     for (mut health, mut transform, player) in query.iter_mut() {
         health.current = health.max;
         if player.id == 1 {
@@ -257,7 +270,7 @@ fn reset_players_on_restart(
 
 #[allow(dead_code)]
 pub fn setup_game_entities(mut commands: Commands) {
-    println!("Setting up game entities...");
+    tracing::info!("Setting up game entities...");
 
     // Some ground for the players to stand on
     commands.spawn((
@@ -326,7 +339,7 @@ pub fn setup_game_entities(mut commands: Commands) {
 type GameEntityQuery<'w, 's> = Query<'w, 's, Entity, Or<(With<Player>, With<RigidBody>)>>;
 
 fn cleanup_game_entities(mut commands: Commands, query: GameEntityQuery) {
-    println!("Cleaning up game entities...");
+    tracing::info!("Cleaning up game entities...");
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
