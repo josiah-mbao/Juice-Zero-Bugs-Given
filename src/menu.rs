@@ -351,14 +351,19 @@ fn animate_menu_background(
 }
 
 fn update_menu_display(
+    mut set: ParamSet<(
+        Query<&mut Text, With<BossDisplay>>,
+        Query<&mut Text, With<DifficultyDisplay>>,
+    )>,
     config: Res<GameConfig>,
-    mut boss_query: Query<&mut Text, With<BossDisplay>>,
-    mut diff_query: Query<&mut Text, With<DifficultyDisplay>>,
 ) {
-    for mut text in boss_query.iter_mut() {
+    // Update boss display
+    for mut text in set.p0().iter_mut() {
         text.sections[0].value = format!("BOSS: {}", boss_name(config.boss));
     }
-    for mut text in diff_query.iter_mut() {
+
+    // Update difficulty display
+    for mut text in set.p1().iter_mut() {
         text.sections[0].value = format!("DIFFICULTY: {}", difficulty_name(config.difficulty));
     }
 }

@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
-use std::time::Duration;
 
 use crate::combat;
 use crate::combat::SpawnHitboxEvent;
@@ -41,13 +40,14 @@ use crate::game_state::{AppState, BossType, Difficulty, GameConfig};
             }
         }
 
-        pub fn health_multiplier(&self) -> f32 {
-            match self {
-                Difficulty::Easy => 0.8,
-                Difficulty::Normal => 1.0,
-                Difficulty::Hard => 1.2,
-            }
+    #[allow(dead_code)]
+    pub fn health_multiplier(&self) -> f32 {
+        match self {
+            Difficulty::Easy => 0.8,
+            Difficulty::Normal => 1.0,
+            Difficulty::Hard => 1.2,
         }
+    }
     }
 
 // -- Components --
@@ -100,14 +100,14 @@ fn player_movement(
     player_transforms: Query<(&Transform, &Player, &ControlType)>,
 ) {
     let mut human_position = None;
-    for (transform, player, control) in player_transforms.iter() {
+    for (transform, _player, control) in player_transforms.iter() {
         if matches!(control, ControlType::Human) {
             human_position = Some(transform.translation.x);
             break;
         }
     }
 
-    for (mut velocity, player, move_speed, control, transform) in query.iter_mut() {
+    for (mut velocity, _player, move_speed, control, transform) in query.iter_mut() {
         let mut direction = 0.0;
         match control {
             ControlType::Human => {
