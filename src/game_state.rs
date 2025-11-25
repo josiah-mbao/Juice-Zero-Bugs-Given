@@ -17,3 +17,46 @@ pub struct Winner {
     pub player_id: Option<u8>,
     pub is_human_winner: Option<bool>,
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum Difficulty {
+    Easy,
+    Normal,
+    Hard,
+}
+
+impl Default for Difficulty {
+    fn default() -> Self {
+        Difficulty::Normal
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BossType {
+    NullPointer,
+    UndefinedBehavior,
+    DataRace,
+    UseAfterFree,
+    BufferOverflow,
+}
+
+impl Default for BossType {
+    fn default() -> Self {
+        BossType::NullPointer
+    }
+}
+
+#[derive(Resource)]
+pub struct GameConfig {
+    pub difficulty: Difficulty,
+    pub boss: BossType,
+}
+
+impl Default for GameConfig {
+    fn default() -> Self {
+        GameConfig {
+            difficulty: Difficulty::default(),
+            boss: BossType::default(),
+        }
+    }
+}

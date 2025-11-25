@@ -1,5 +1,59 @@
-use crate::game_state::AppState;
+use crate::game_state::{AppState, GameConfig, BossType, Difficulty};
 use bevy::prelude::*;
+
+fn next_boss(current: BossType) -> BossType {
+    match current {
+        BossType::NullPointer => BossType::UndefinedBehavior,
+        BossType::UndefinedBehavior => BossType::DataRace,
+        BossType::DataRace => BossType::UseAfterFree,
+        BossType::UseAfterFree => BossType::BufferOverflow,
+        BossType::BufferOverflow => BossType::NullPointer,
+    }
+}
+
+fn prev_boss(current: BossType) -> BossType {
+    match current {
+        BossType::NullPointer => BossType::BufferOverflow,
+        BossType::UndefinedBehavior => BossType::NullPointer,
+        BossType::DataRace => BossType::UndefinedBehavior,
+        BossType::UseAfterFree => BossType::DataRace,
+        BossType::BufferOverflow => BossType::UseAfterFree,
+    }
+}
+
+fn next_difficulty(current: Difficulty) -> Difficulty {
+    match current {
+        Difficulty::Easy => Difficulty::Normal,
+        Difficulty::Normal => Difficulty::Hard,
+        Difficulty::Hard => Difficulty::Easy,
+    }
+}
+
+fn prev_difficulty(current: Difficulty) -> Difficulty {
+    match current {
+        Difficulty::Easy => Difficulty::Hard,
+        Difficulty::Normal => Difficulty::Easy,
+        Difficulty::Hard => Difficulty::Normal,
+    }
+}
+
+fn boss_name(b: BossType) -> &'static str {
+    match b {
+        BossType::NullPointer => "Null Pointer",
+        BossType::UndefinedBehavior => "Undefined Behavior",
+        BossType::DataRace => "Data Race",
+        BossType::UseAfterFree => "Use After Free",
+        BossType::BufferOverflow => "Buffer Overflow",
+    }
+}
+
+fn difficulty_name(d: Difficulty) -> &'static str {
+    match d {
+        Difficulty::Easy => "Easy",
+        Difficulty::Normal => "Normal",
+        Difficulty::Hard => "Hard",
+    }
+}
 
 pub struct MenuPlugin;
 
@@ -10,6 +64,10 @@ impl Plugin for MenuPlugin {
             .add_systems(
                 Update,
                 main_menu_interaction.run_if(in_state(AppState::MainMenu)),
+            )
+            .add_systems(
+                Update,
+                update_menu_display.run_if(in_state(AppState::MainMenu)),
             )
             .add_systems(
                 Update,
@@ -37,10 +95,20 @@ struct MainMenu;
 #[derive(Component)]
 struct MenuBackgroundCircle;
 
+#[derive(Component)]
+struct BossDisplay;
+
+#[derive(Component)]
+struct DifficultyDisplay;
+
 #[derive(Debug, Clone, Copy)]
 enum MenuAction {
     StartGame,
     Quit,
+    NextBoss,
+    PrevBoss,
+    NextDifficulty,
+    PrevDifficulty,
 }
 
 // A type alias for the filter used in button interaction queries.
@@ -88,6 +156,61 @@ fn setup_main_menu(mut commands: Commands) {
                     ..default()
                 },
             ));
+
+            // Boss Selection
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        row_gap: Val::Px(10.0),
+                        margin: UiRect::top(Val::Px(20.0)),
+                        ..default()
+                    },
+                    ..default()
+                })
+                .with_children(|parent| {
+                    spawn_menu_button(parent, "<", MenuAction::PrevBoss);
+                    parent.spawn((
+                        TextBundle::from_section(
+                            "BOSS: Null Pointer",
+                            TextStyle {
+                                font_size: 28.0,
+                                color: Color::WHITE,
+                                ..default()
+                            },
+                        ),
+                        BossDisplay,
+                    ));
+                    spawn_menu_button(parent, ">", MenuAction::NextBoss);
+                });
+
+            // Difficulty Selection
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        row_gap: Val::Px(10.0),
+                        ..default()
+                    },
+                    ..default()
+                })
+                .with_children(|parent| {
+                    spawn_menu_button(parent, "<", MenuAction::PrevDifficulty);
+                    parent.spawn((
+                        TextBundle::from_section(
+                            "DIFFICULTY: Normal",
+                            TextStyle {
+                                font_size: 28.0,
+                                color: Color::WHITE,
+                                ..default()
+                            },
+                        ),
+                        DifficultyDisplay,
+                    ));
+                    spawn_menu_button(parent, ">", MenuAction::NextDifficulty);
+                });
 
             parent
                 .spawn(NodeBundle {
@@ -150,18 +273,31 @@ fn spawn_menu_button(parent: &mut ChildBuilder, text: &str, action: MenuAction) 
 
 fn main_menu_interaction(
     mut interaction_query: Query<(&Interaction, &MenuButtonAction), InteractingButtonFilter>,
+    mut config: ResMut<GameConfig>,
     mut app_state: ResMut<NextState<AppState>>,
 ) {
     for (interaction, button_action) in &mut interaction_query {
         if *interaction == Interaction::Pressed {
             match button_action.action {
                 MenuAction::StartGame => {
-                    println!("Starting game!");
+                    tracing::info!("Starting game!");
                     app_state.set(AppState::InGame);
                 }
                 MenuAction::Quit => {
-                    println!("Quitting game!");
+                    tracing::info!("Quitting game!");
                     std::process::exit(0);
+                }
+                MenuAction::NextBoss => {
+                    config.boss = next_boss(config.boss);
+                }
+                MenuAction::PrevBoss => {
+                    config.boss = prev_boss(config.boss);
+                }
+                MenuAction::NextDifficulty => {
+                    config.difficulty = next_difficulty(config.difficulty);
+                }
+                MenuAction::PrevDifficulty => {
+                    config.difficulty = prev_difficulty(config.difficulty);
                 }
             }
         }
@@ -211,6 +347,19 @@ fn animate_menu_background(
     for (i, mut transform) in query.iter_mut().enumerate() {
         transform.translation.y += (t.sin() + i as f32 * 0.1).sin() * 0.5;
         transform.translation.x += (t.cos() + i as f32 * 0.1).cos() * 0.2;
+    }
+}
+
+fn update_menu_display(
+    config: Res<GameConfig>,
+    mut boss_query: Query<&mut Text, With<BossDisplay>>,
+    mut diff_query: Query<&mut Text, With<DifficultyDisplay>>,
+) {
+    for mut text in boss_query.iter_mut() {
+        text.sections[0].value = format!("BOSS: {}", boss_name(config.boss));
+    }
+    for mut text in diff_query.iter_mut() {
+        text.sections[0].value = format!("DIFFICULTY: {}", difficulty_name(config.difficulty));
     }
 }
 

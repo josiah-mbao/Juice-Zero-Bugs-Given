@@ -4,25 +4,51 @@ use std::time::Duration;
 
 use crate::combat;
 use crate::combat::SpawnHitboxEvent;
-use crate::game_state::AppState;
+use crate::game_state::{AppState, BossType, Difficulty, GameConfig};
 
-pub struct PlayerPlugin;
+    pub struct PlayerPlugin;
 
-impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                player_movement,
-                update_attack_cooldowns,
-                player_attack.after(update_attack_cooldowns),
-                update_player_facing_direction,
+    impl Plugin for PlayerPlugin {
+        fn build(&self, app: &mut App) {
+            app.add_systems(
+                Update,
+                (
+                    player_movement,
+                    update_attack_cooldowns,
+                    player_attack.after(update_attack_cooldowns),
+                    update_player_facing_direction,
+                )
+                    .run_if(in_state(AppState::InGame)),
             )
-                .run_if(in_state(AppState::InGame)),
-        )
-        .add_systems(OnExit(AppState::InGame), cleanup_game_entities);
+            .add_systems(OnExit(AppState::InGame), cleanup_game_entities);
+        }
     }
-}
+
+    impl Difficulty {
+        pub fn speed_multiplier(&self) -> f32 {
+            match self {
+                Difficulty::Easy => 0.7,
+                Difficulty::Normal => 1.0,
+                Difficulty::Hard => 1.3,
+            }
+        }
+
+        pub fn attack_frequency_multiplier(&self) -> f32 {
+            match self {
+                Difficulty::Easy => 1.5, // less frequent attacks
+                Difficulty::Normal => 1.0,
+                Difficulty::Hard => 0.7, // more frequent attacks
+            }
+        }
+
+        pub fn health_multiplier(&self) -> f32 {
+            match self {
+                Difficulty::Easy => 0.8,
+                Difficulty::Normal => 1.0,
+                Difficulty::Hard => 1.2,
+            }
+        }
+    }
 
 // -- Components --
 
@@ -35,15 +61,6 @@ pub struct Player {
 pub enum ControlType {
     Human,
     AI(BossType),
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum BossType {
-    NullPointer,
-    UndefinedBehavior,
-    DataRace,
-    UseAfterFree,
-    BufferOverflow,
 }
 
 #[derive(Component, Default)]
@@ -72,6 +89,7 @@ pub struct AttackCooldown {
 fn player_movement(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
+    config: Res<GameConfig>,
     mut query: Query<(
         &mut LinearVelocity,
         &Player,
@@ -146,7 +164,12 @@ fn player_movement(
                 }
             }
         }
-        velocity.x = direction * move_speed.0;
+        let speed_mult = if matches!(control, ControlType::AI(_)) {
+            config.difficulty.speed_multiplier()
+        } else {
+            1.0
+        };
+        velocity.x = direction * move_speed.0 * speed_mult;
     }
 }
 
@@ -159,6 +182,7 @@ fn update_attack_cooldowns(time: Res<Time>, mut query: Query<&mut AttackCooldown
 fn player_attack(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
+    config: Res<GameConfig>,
     mut query: Query<(
         Entity,
         &Player,
@@ -201,7 +225,8 @@ fn player_attack(
                         BossType::NullPointer => {
                             // Sporadic attacks
                             let phase = time.elapsed_seconds() % 4.0;
-                            distance < 150.0 && phase > 3.5
+                            let threshold = 3.5 * config.difficulty.attack_frequency_multiplier();
+                            distance < 150.0 && phase > threshold
                         }
                         BossType::UndefinedBehavior => {
                             // Random attacks

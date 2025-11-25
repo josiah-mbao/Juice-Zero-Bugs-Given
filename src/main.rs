@@ -11,10 +11,10 @@ mod player;
 mod ui;
 
 use combat::CombatPlugin;
-use game_state::{AppState, Winner};
+use game_state::{AppState, GameConfig, Winner};
 use menu::MenuPlugin;
 use player::{
-    AttackCooldown, BossType, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin,
+    AttackCooldown, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin,
 };
 use ui::UiPlugin;
 
@@ -39,13 +39,14 @@ fn main() {
         ))
         .init_state::<AppState>()
         .insert_resource(Winner::default())
+        .insert_resource(GameConfig::default())
         .add_systems(Startup, setup_camera)
         .add_systems(OnEnter(AppState::InGame), setup) // <-- Add this line
         .add_systems(Update, restart_game.run_if(in_state(AppState::GameOver)))
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
     // Removed: commands.spawn(Camera2dBundle::default());
 
     // Some ground for the players to stand on
@@ -125,7 +126,7 @@ fn setup(mut commands: Commands) {
         Collider::rectangle(50.0, 100.0),
         combat::Hurtbox,
         Player { id: 2 },
-        ControlType::AI(BossType::NullPointer),
+        ControlType::AI(game_config.boss),
         Health {
             current: 100,
             max: 100,
