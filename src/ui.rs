@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::game_state::{AppState, Winner};
+use crate::game_state::{AppState, BossType, GameConfig, Winner};
 use crate::player::{ControlType, Health, Player};
 
 pub struct UiPlugin;
@@ -24,6 +24,18 @@ struct HealthBar(u8); // Holds the player ID (1 or 2)
 
 #[derive(Component)]
 struct GameOverScreen;
+
+// -- Helper Functions --
+
+fn boss_name(b: BossType) -> &'static str {
+    match b {
+        BossType::NullPointer => "Null Pointer",
+        BossType::UndefinedBehavior => "Undefined Behavior",
+        BossType::DataRace => "Data Race",
+        BossType::UseAfterFree => "Use After Free",
+        BossType::BufferOverflow => "Buffer Overflow",
+    }
+}
 
 // -- Systems --
 
@@ -115,7 +127,7 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                 .find(|(player, _)| player.id == 2)
                 .map(|(_, control)| match control {
                     ControlType::Human => "PLAYER",
-                    ControlType::AI(_) => "BOSS",
+                    ControlType::AI(boss_type) => boss_name(*boss_type),
                 })
                 .unwrap_or("BOSS");
 
@@ -170,13 +182,12 @@ fn update_health_bars(
     }
 }
 
-fn setup_game_over_screen(mut commands: Commands, winner: Res<Winner>) {
+fn setup_game_over_screen(mut commands: Commands, winner: Res<Winner>, game_config: Res<GameConfig>) {
     let winner_text = match winner.is_human_winner {
-        Some(true) => "PLAYER WINS!",
-        Some(false) => "BOSS WINS!",
-        None => "GAME OVER",
-    }
-    .to_string();
+        Some(true) => "PLAYER WINS!".to_string(),
+        Some(false) => format!("{} WINS!", boss_name(game_config.boss).to_uppercase()),
+        None => "GAME OVER".to_string(),
+    };
 
     commands
         .spawn((
