@@ -200,8 +200,8 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                     position_type: PositionType::Absolute,
                     width: Val::Px(80.0),
                     height: Val::Px(40.0),
-                    top: Val::Percent(25.0),
-                    left: Val::Percent(50.0),
+                    top: Val::Percent(1.0),
+                    left: Val::Percent(47.0),
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::Center,
                     ..default()

@@ -19,6 +19,9 @@
 - **UI/UX**: ✅ Polished interface with health bars, labels, and winner announcements
 - **Arena**: ✅ Contained fighting environment with boundary walls
 - **Game Flow**: ✅ Complete menu system, pause, and restart functionality
+- **Visual Effects**: ✅ Boss sprites, particle systems, and color coding
+- **Audio Setup**: ✅ Framework ready for sound effects and music
+- **Pause System**: ✅ Multi-modal pause with UI button and keyboard shortcuts
 
 ---
 
@@ -26,15 +29,19 @@
 
 * **Single Player Battles**: Face off against AI bosses in intense 1v1 combat
 * **Multiple Unique Bosses**: Experience distinct AI opponents based on programming bugs:
-  * **🔸 Null Pointer** – Erratic movement, sporadic attacks, vanishing tactics
-  * **🔸 Undefined Behavior** – Unpredictable glitchy movement patterns, random timing attacks
-  * **🔸 Data Race** – Aggressive approach/retreat cycles, rapid-fire attacks when close
-  * **🔸 Use After Free** – Steady aggressive pursuit with regular interval attacks
-  * **🔸 Buffer Overflow** – Slow but powerful movement with devastating attacks
-* **Rich Visual Feedback**: Dynamic health bars with "PLAYER" vs "BOSS" labels, clear winner announcements
+  * **🔵 Null Pointer** – Erratic movement, sporadic attacks, vanishing tactics (Blue sprite)
+  * **🟢 Undefined Behavior** – Unpredictable glitchy movement, random timing attacks (Jagged green sprite)
+  * **🔴 Data Race** – Aggressive approach/retreat cycles, rapid-fire attacks when close (Crimson sprite)
+  * **🟣 Use After Free** – Steady aggressive pursuit with regular interval attacks (Tall purple sprite)
+  * **🟠 Buffer Overflow** – Slow but powerful movement with devastating attacks (Wide orange sprite)
+* **Rich Visual Feedback**: Dynamic health bars with specific boss names (e.g., "NULL POINTER", "DATA RACE"), clear winner announcements, particle effects on damage
+* **Particle Effects System**: Hit explosions with physics-based red particles for satisfying combat feedback
+* **Audio Framework**: Ready for sound effects and background music (attack sounds, hit effects, victory music)
+* **Advanced Pause System**: Multi-modal pause with centralized UI button, P key shortcut, and full pause menu with Resume/Quit options
 * **Containment System**: Invisible arena boundaries prevent falling off screen edges
+* **Difficulty Scaling**: Easy/Normal/Hard modes with speed and attack frequency adjustments
 * **Intuitive Controls**: Simple keyboard controls for accessible gameplay
-* **Built with Rust**: Memory-safe, high-performance architecture
+* **Built with Rust**: Memory-safe, high-performance architecture using Bevy game engine
 
 ---
 
@@ -48,8 +55,9 @@
 | Move Right | `D` | `→` (Right Arrow) |
 | Attack | `F` | `L` |
 
-**Global Controls:**
-* **Escape:** Pause / Resume Game
+**In-Game Controls:**
+* **P** or **Click PAUSE button**: Pause game with menu options
+* **Escape**: Resume from pause (keyboard alternative)
 * **Space (on Game Over screen):** Return to Main Menu
 
 ---
@@ -74,7 +82,7 @@
 
 1.  Clone the repo:
     ```bash
-    git clone [https://github.com/josiah-mbao/Juice-Zero-Bugs-Given.git](https://github.com/josiah-mbao/Juice-Zero-Bugs-Given.git)
+    git clone https://github.com/josiah-mbao/Juice-Zero-Bugs-Given.git
     cd Juice-Zero-Bugs-Given
     ```
 
@@ -89,9 +97,41 @@
 
 ---
 
+## 🎯 Game Features Details
+
+### Boss AI Behaviors
+- **Easy Difficulty**: 30% slower movement, 50% less frequent attacks
+- **Normal Difficulty**: Balanced gameplay
+- **Hard Difficulty**: 30% faster movement, 30% more frequent attacks
+
+### Visual System
+- **Boss Sprites**: Each boss has unique colors and shapes representing their bug nature
+- **Particle Effects**: 5 red particles spawn on hits with physics simulation
+- **UI Labels**: Health bars show specific boss names instead of generic "BOSS"
+
+### Pause System
+- **Central Pause Button**: Gray button positioned 25% from top, centered
+- **P Key Shortcut**: Keyboard pause during gameplay
+- **Pause Menu**: Shows "PAUSED", "Escape to Resume", Resume and Exit buttons
+- **State Preservation**: Game state frozen during pause
+
+### Audio Framework
+- **Integration Ready**: Bevy's audio system integrated
+- **Event System**: Combat events structured for sound playback
+- **Extensible**: Easy to add sound files for attacks, hits, background music
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! If you have an idea for a new 'bug' boss (like a `Segfault` or `Off-by-One`) or want to fix an issue, feel free to fork the repo and submit a pull request.
+
+**Ideas for Enhancement:**
+- Add victory/defeat music and sound effects
+- Implement local multiplayer support
+- Add visual effects for special attacks
+- Create boss unlock progression
+- Add customizable controls
 
 ---
 
