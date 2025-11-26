@@ -10,8 +10,19 @@ impl Plugin for UiPlugin {
         app.add_systems(OnEnter(AppState::InGame), setup_ui)
             .add_systems(
                 Update,
-                update_health_bars.run_if(in_state(AppState::InGame)),
+                (
+                    update_health_bars.run_if(in_state(AppState::InGame)),
+                    handle_pause_button.run_if(in_state(AppState::InGame)),
+                ),
             )
+            .add_systems(OnEnter(AppState::Paused), setup_pause_screen)
+            .add_systems(
+                Update,
+                handle_pause_menu_buttons.run_if(in_state(AppState::Paused)),
+            )
+            .add_systems(OnExit(AppState::Paused), (cleanup_pause_screen,))
+            .add_systems(OnEnter(AppState::MainMenu), reset_winner_on_menu)
+            .add_systems(OnExit(AppState::InGame), cleanup_pause_button)
             .add_systems(OnEnter(AppState::GameOver), setup_game_over_screen)
             .add_systems(OnExit(AppState::GameOver), cleanup_game_over_screen);
     }
@@ -24,6 +35,18 @@ struct HealthBar(u8); // Holds the player ID (1 or 2)
 
 #[derive(Component)]
 struct GameOverScreen;
+
+#[derive(Component)]
+struct PauseButton;
+
+#[derive(Component)]
+struct PauseScreen;
+
+#[derive(Component)]
+struct ResumeButton;
+
+#[derive(Component)]
+struct ExitButton;
 
 // -- Helper Functions --
 
@@ -167,6 +190,38 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                     ));
                 });
         });
+
+    // Pause Button - Top Center
+    commands
+        .spawn((
+            ButtonBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    width: Val::Px(80.0),
+                    height: Val::Px(40.0),
+                    top: Val::Percent(2.0),
+                    left: Val::Percent(50.0),
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::Center,
+                    ..default()
+                },
+                background_color: Color::srgb(0.2, 0.2, 0.2).into(),
+                border_color: Color::WHITE.into(),
+                border_radius: BorderRadius::all(Val::Px(5.0)),
+                ..default()
+            },
+            PauseButton,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "PAUSE",
+                TextStyle {
+                    font_size: 16.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ));
+        });
 }
 
 fn update_health_bars(
@@ -236,6 +291,188 @@ fn setup_game_over_screen(mut commands: Commands, winner: Res<Winner>, game_conf
 }
 
 fn cleanup_game_over_screen(mut commands: Commands, query: Query<Entity, With<GameOverScreen>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn handle_pause_button(
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<PauseButton>),
+    >,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    for (interaction, mut background_color) in &mut interaction_query {
+        match *interaction {
+            Interaction::Pressed => {
+                next_state.set(AppState::Paused);
+            }
+            Interaction::Hovered => {
+                *background_color = Color::srgb(0.4, 0.4, 0.4).into();
+            }
+            Interaction::None => {
+                *background_color = Color::srgb(0.2, 0.2, 0.2).into();
+            }
+        }
+    }
+}
+
+fn setup_pause_screen(mut commands: Commands) {
+    commands
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    position_type: PositionType::Absolute,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(30.0),
+                    ..default()
+                },
+                background_color: Color::srgba(0.0, 0.0, 0.0, 0.8).into(),
+                ..default()
+            },
+            PauseScreen,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "PAUSED",
+                TextStyle {
+                    font_size: 100.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ));
+
+            parent.spawn(TextBundle::from_section(
+                "Escape to Resume",
+                TextStyle {
+                    font_size: 40.0,
+                    color: Color::srgb(0.8, 0.8, 0.8),
+                    ..default()
+                },
+            ));
+
+            // Resume Button
+            parent
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            width: Val::Px(200.0),
+                            height: Val::Px(60.0),
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        background_color: Color::srgb(0.2, 0.5, 0.2).into(),
+                        border_color: Color::WHITE.into(),
+                        border_radius: BorderRadius::all(Val::Px(5.0)),
+                        ..default()
+                    },
+                    ResumeButton,
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        "RESUME",
+                        TextStyle {
+                            font_size: 24.0,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                    ));
+                });
+
+            // Exit Button
+            parent
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            width: Val::Px(200.0),
+                            height: Val::Px(60.0),
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        background_color: Color::srgb(0.5, 0.2, 0.2).into(),
+                        border_color: Color::WHITE.into(),
+                        border_radius: BorderRadius::all(Val::Px(5.0)),
+                        ..default()
+                    },
+                    ExitButton,
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        "EXIT TO MENU",
+                        TextStyle {
+                            font_size: 20.0,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                    ));
+                });
+        });
+}
+
+fn handle_pause_menu_buttons(
+    mut resume_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<ResumeButton>),
+    >,
+    mut exit_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<ExitButton>),
+    >,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    // Handle Resume Button
+    for (interaction, mut background_color) in &mut resume_query {
+        match *interaction {
+            Interaction::Pressed => {
+                next_state.set(AppState::InGame);
+            }
+            Interaction::Hovered => {
+                *background_color = Color::srgb(0.4, 0.7, 0.4).into();
+            }
+            Interaction::None => {
+                *background_color = Color::srgb(0.2, 0.5, 0.2).into();
+            }
+        }
+    }
+
+    // Handle Exit Button
+    for (interaction, mut background_color) in &mut exit_query {
+        match *interaction {
+            Interaction::Pressed => {
+                next_state.set(AppState::MainMenu);
+            }
+            Interaction::Hovered => {
+                *background_color = Color::srgb(0.7, 0.4, 0.4).into();
+            }
+            Interaction::None => {
+                *background_color = Color::srgb(0.5, 0.2, 0.2).into();
+            }
+        }
+    }
+}
+
+fn cleanup_pause_screen(mut commands: Commands, query: Query<Entity, With<PauseScreen>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn reset_winner_on_menu(mut winner: ResMut<Winner>) {
+    winner.player_id = None;
+    winner.is_human_winner = None;
+}
+
+// Cleanup pause button when transitioning away from in-game
+fn cleanup_pause_button(mut commands: Commands, query: Query<Entity, With<PauseButton>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
