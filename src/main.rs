@@ -11,7 +11,7 @@ mod player;
 mod ui;
 
 use combat::CombatPlugin;
-use game_state::{AppState, GameConfig, Winner};
+use game_state::{AppState, BossType, GameConfig, Winner};
 use menu::MenuPlugin;
 use player::{
     AttackCooldown, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin,
@@ -109,14 +109,39 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
         },
     ));
 
-    // -- Player 2 (AI Boss - starting with NullPointer) --
+    // Create boss sprite based on type
+    let boss_sprite = match game_config.boss {
+        BossType::NullPointer => Sprite {
+            color: Color::srgb(0.0, 0.0, 1.0), // Blue
+            custom_size: Some(Vec2::new(50.0, 100.0)),
+            ..default()
+        },
+        BossType::UndefinedBehavior => Sprite {
+            color: Color::srgb(0.5, 1.0, 0.5), // Jagged green
+            custom_size: Some(Vec2::new(70.0, 100.0)), // Wider for jagged look
+            ..default()
+        },
+        BossType::DataRace => Sprite {
+            color: Color::srgb(1.0, 0.0, 0.5), // Red
+            custom_size: Some(Vec2::new(50.0, 100.0)),
+            ..default()
+        },
+        BossType::UseAfterFree => Sprite {
+            color: Color::srgb(0.5, 0.0, 1.0), // Purple
+            custom_size: Some(Vec2::new(45.0, 110.0)), // Taller
+            ..default()
+        },
+        BossType::BufferOverflow => Sprite {
+            color: Color::srgb(1.0, 0.5, 0.0), // Orange
+            custom_size: Some(Vec2::new(60.0, 90.0)), // Shorter/wider
+            ..default()
+        },
+    };
+
+    // -- Player 2 (AI Boss) --
     commands.spawn((
         SpriteBundle {
-            sprite: Sprite {
-                color: Color::srgb(0.0, 0.0, 1.0),
-                custom_size: Some(Vec2::new(50.0, 100.0)),
-                ..default()
-            },
+            sprite: boss_sprite,
             transform: Transform::from_xyz(200.0, 0.0, 0.0),
             ..default()
         },

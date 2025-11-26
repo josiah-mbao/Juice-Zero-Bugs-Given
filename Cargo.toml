@@ -18,6 +18,8 @@ bevy_xpbd_2d = "0.5"
 rand = "0.9.2"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+# Audio support
+# bevy_kira_audio = "0.22"  # Optional: Can be removed if not using
 
 # The following is recommended for faster compilation in debug builds
 [features]

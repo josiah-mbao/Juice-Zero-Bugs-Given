@@ -18,6 +18,8 @@ impl Plugin for CombatPlugin {
                     despawn_hitbox_after_duration,
                     detect_collisions,
                     apply_damage.after(detect_collisions),
+                    spawn_particles_on_hit.after(apply_damage),
+                    despawn_particles_after_duration.after(spawn_particles_on_hit),
                     check_for_game_over.after(apply_damage),
                 )
                     .run_if(in_state(AppState::InGame)),
@@ -51,6 +53,16 @@ pub struct Hitbox {
 
 #[derive(Component)]
 pub struct HitboxDuration {
+    pub timer: Timer,
+}
+
+// -- Particle Components --
+
+#[derive(Component)]
+pub struct Particle;
+
+#[derive(Component)]
+pub struct ParticleDuration {
     pub timer: Timer,
 }
 
@@ -179,6 +191,55 @@ fn apply_damage(
             Err(_) => {
                 tracing::warn!("Tried to apply damage to entity without Health or Player components");
             }
+        }
+    }
+}
+
+fn spawn_particles_on_hit(
+    mut commands: Commands,
+    mut damage_reader: EventReader<DamageEvent>,
+    transform_query: Query<&Transform>,
+) {
+    for event in damage_reader.read() {
+        if let Ok(transform) = transform_query.get(event.target) {
+            let position = transform.translation.truncate();
+            let particle_count = 5;
+            for i in 0..particle_count {
+                let angle = std::f32::consts::PI * 2.0 * (i as f32 / particle_count as f32);
+                let speed = 100.0 + rand::random::<f32>() * 50.0;
+                let velocity = Vec2::new(angle.cos(), angle.sin()) * speed;
+
+                commands.spawn((
+                    SpriteBundle {
+                        sprite: Sprite {
+                            color: Color::srgb(1.0, 0.0, 0.0),
+                            custom_size: Some(Vec2::new(5.0, 5.0)),
+                            ..default()
+                        },
+                        transform: Transform::from_xyz(position.x, position.y, 1.0),
+                        ..default()
+                    },
+                    RigidBody::Dynamic,
+                    LinearVelocity(velocity),
+                    Particle,
+                    ParticleDuration {
+                        timer: Timer::new(Duration::from_millis(500), TimerMode::Once),
+                    },
+                ));
+            }
+        }
+    }
+}
+
+fn despawn_particles_after_duration(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut ParticleDuration), With<Particle>>,
+) {
+    for (entity, mut duration) in query.iter_mut() {
+        duration.timer.tick(time.delta());
+        if duration.timer.finished() {
+            commands.entity(entity).despawn_recursive();
         }
     }
 }
