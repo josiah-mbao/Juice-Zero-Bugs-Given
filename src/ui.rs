@@ -13,6 +13,7 @@ impl Plugin for UiPlugin {
                 (
                     update_health_bars.run_if(in_state(AppState::InGame)),
                     handle_pause_button.run_if(in_state(AppState::InGame)),
+                    handle_p_key_pause.run_if(in_state(AppState::InGame)),
                 ),
             )
             .add_systems(OnEnter(AppState::Paused), setup_pause_screen)
@@ -191,7 +192,7 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                 });
         });
 
-    // Pause Button - Top Center
+    // Pause Button - More Centrally Positioned
     commands
         .spawn((
             ButtonBundle {
@@ -199,7 +200,7 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                     position_type: PositionType::Absolute,
                     width: Val::Px(80.0),
                     height: Val::Px(40.0),
-                    top: Val::Percent(2.0),
+                    top: Val::Percent(25.0),
                     left: Val::Percent(50.0),
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::Center,
@@ -419,42 +420,39 @@ fn setup_pause_screen(mut commands: Commands) {
 }
 
 fn handle_pause_menu_buttons(
-    mut resume_query: Query<
-        (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<ResumeButton>),
-    >,
-    mut exit_query: Query<
-        (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<ExitButton>),
+    mut buttons_query: Query<
+        (&Interaction, &mut BackgroundColor, Option<&ResumeButton>, Option<&ExitButton>),
+        Changed<Interaction>,
     >,
     mut next_state: ResMut<NextState<AppState>>,
 ) {
-    // Handle Resume Button
-    for (interaction, mut background_color) in &mut resume_query {
-        match *interaction {
-            Interaction::Pressed => {
-                next_state.set(AppState::InGame);
-            }
-            Interaction::Hovered => {
-                *background_color = Color::srgb(0.4, 0.7, 0.4).into();
-            }
-            Interaction::None => {
-                *background_color = Color::srgb(0.2, 0.5, 0.2).into();
-            }
-        }
-    }
+    for (interaction, mut background_color, resume_button, exit_button) in &mut buttons_query {
+        let is_resume = resume_button.is_some();
+        let is_exit = exit_button.is_some();
 
-    // Handle Exit Button
-    for (interaction, mut background_color) in &mut exit_query {
-        match *interaction {
-            Interaction::Pressed => {
-                next_state.set(AppState::MainMenu);
+        if is_resume {
+            match *interaction {
+                Interaction::Pressed => {
+                    next_state.set(AppState::InGame);
+                }
+                Interaction::Hovered => {
+                    *background_color = Color::srgb(0.4, 0.7, 0.4).into();
+                }
+                Interaction::None => {
+                    *background_color = Color::srgb(0.2, 0.5, 0.2).into();
+                }
             }
-            Interaction::Hovered => {
-                *background_color = Color::srgb(0.7, 0.4, 0.4).into();
-            }
-            Interaction::None => {
-                *background_color = Color::srgb(0.5, 0.2, 0.2).into();
+        } else if is_exit {
+            match *interaction {
+                Interaction::Pressed => {
+                    next_state.set(AppState::MainMenu);
+                }
+                Interaction::Hovered => {
+                    *background_color = Color::srgb(0.7, 0.4, 0.4).into();
+                }
+                Interaction::None => {
+                    *background_color = Color::srgb(0.5, 0.2, 0.2).into();
+                }
             }
         }
     }
@@ -463,6 +461,15 @@ fn handle_pause_menu_buttons(
 fn cleanup_pause_screen(mut commands: Commands, query: Query<Entity, With<PauseScreen>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn handle_p_key_pause(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::KeyP) {
+        next_state.set(AppState::Paused);
     }
 }
 
