@@ -80,6 +80,13 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
         Collider::rectangle(50.0, 800.0), // Thin wall, tall enough for screen
     ));
 
+    // Upper boundary wall (ceiling)
+    commands.spawn((
+        TransformBundle::from_transform(Transform::from_xyz(0.0, 350.0, 0.0)),
+        RigidBody::Static,
+        Collider::rectangle(1400.0, 50.0), // Wide ceiling, thin enough
+    ));
+
     // -- Player 1 (Human) --
     commands.spawn((
         SpriteBundle {
