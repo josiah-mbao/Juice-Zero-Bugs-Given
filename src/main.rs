@@ -87,7 +87,10 @@ fn main() {
         .insert_resource(GameConfig::default())
         .add_systems(Startup, (setup_camera, setup_assets))
         .add_systems(OnEnter(AppState::InGame), setup) // <-- Add this line
-        .add_systems(Update, (update_animation_state, animate_sprite).run_if(in_state(AppState::InGame)))
+        .add_systems(
+            Update,
+            (update_animation_state, animate_sprite).run_if(in_state(AppState::InGame)),
+        )
         .add_systems(Update, restart_game.run_if(in_state(AppState::GameOver)))
         .run();
 }
@@ -175,7 +178,8 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameA
     ));
 
     // Determine Player 2 sprite and control type
-    let (player2_initial_texture, player2_control, player2_health) = if game_config.player2_is_human {
+    let (player2_initial_texture, player2_control, player2_health) = if game_config.player2_is_human
+    {
         (
             assets.player_animations.idle[0].clone(), // Use player sprite for human P2
             ControlType::Human,
@@ -276,27 +280,39 @@ fn restart_game(
 
 fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
     let player_animations = PlayerAnimations {
-        idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_idle.png")],
+        idle: vec![asset_server
+            .load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_idle.png")],
         walk: vec![
-            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_walk1.png"),
-            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_walk2.png"),
+            asset_server
+                .load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_walk1.png"),
+            asset_server
+                .load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_walk2.png"),
         ],
         attack: vec![
-            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_kick.png"),
-            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action1.png"),
-            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action2.png"),
+            asset_server
+                .load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_kick.png"),
+            asset_server
+                .load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action1.png"),
+            asset_server
+                .load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action2.png"),
         ],
-        jump: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_jump.png")],
-        hurt: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_hurt.png")],
+        jump: vec![asset_server
+            .load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_jump.png")],
+        hurt: vec![asset_server
+            .load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_hurt.png")],
     };
 
     let boss_animations = BossAnimations {
-        idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_idle.png")],
+        idle: vec![asset_server
+            .load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_idle.png")],
         attack: vec![
-            asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action1.png"),
-            asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action2.png"),
+            asset_server
+                .load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action1.png"),
+            asset_server
+                .load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action2.png"),
         ],
-        hurt: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_back.png")],
+        hurt: vec![asset_server
+            .load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_back.png")],
     };
 
     let assets = GameAssets {
@@ -335,20 +351,30 @@ fn update_animation_state(
         &ControlType,
     )>,
 ) {
-    for (mut animation_state, velocity, grounded, attack_cooldown, health, player, control_type) in query.iter_mut() {
+    for (mut animation_state, velocity, grounded, attack_cooldown, health, player, control_type) in
+        query.iter_mut()
+    {
         // Check immediate input states for responsive animations
         let (attack_pressed, jump_pressed) = match control_type {
             ControlType::Human => {
-                let attack_key = if player.id == 1 { KeyCode::KeyF } else { KeyCode::KeyL };
-                let jump_key = if player.id == 1 { KeyCode::KeyW } else { KeyCode::ArrowUp };
+                let attack_key = if player.id == 1 {
+                    KeyCode::KeyF
+                } else {
+                    KeyCode::KeyL
+                };
+                let jump_key = if player.id == 1 {
+                    KeyCode::KeyW
+                } else {
+                    KeyCode::ArrowUp
+                };
                 (
                     keyboard_input.pressed(attack_key) || !attack_cooldown.timer.finished(), // Show attack animation while cooling down too
-                    keyboard_input.pressed(jump_key)
+                    keyboard_input.pressed(jump_key),
                 )
-            },
+            }
             ControlType::AI(_) => (
                 !attack_cooldown.timer.finished(), // AI uses cooldown
-                false // AI jumping is random, not input-based
+                false,                             // AI jumping is random, not input-based
             ),
         };
 
@@ -359,7 +385,8 @@ fn update_animation_state(
             AnimationType::Jumping
         } else if health.current < health.max / 3 {
             AnimationType::Hurt
-        } else if velocity.x.abs() > 1.0 { // Much lower threshold for immediate walking response
+        } else if velocity.x.abs() > 1.0 {
+            // Much lower threshold for immediate walking response
             AnimationType::Walking
         } else {
             AnimationType::Idle
@@ -379,11 +406,7 @@ fn update_animation_state(
 
 fn animate_sprite(
     assets: Res<GameAssets>,
-    mut query: Query<(
-        &mut Handle<Image>,
-        &mut AnimationState,
-        &ControlType,
-    )>,
+    mut query: Query<(&mut Handle<Image>, &mut AnimationState, &ControlType)>,
 ) {
     for (mut texture, mut animation_state, control_type) in query.iter_mut() {
         // Check if it's time to advance frame
@@ -416,7 +439,9 @@ fn animate_sprite(
             *texture = frames[animation_state.current_frame].clone();
 
             // Reset timer for next frame
-            animation_state.timer.set_duration(Duration::from_secs_f32(frame_duration));
+            animation_state
+                .timer
+                .set_duration(Duration::from_secs_f32(frame_duration));
             animation_state.timer.reset();
         }
     }

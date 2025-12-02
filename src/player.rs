@@ -15,9 +15,9 @@ impl Plugin for PlayerPlugin {
             (
                 update_ai_state,
                 player_movement.after(update_ai_state),
-                    player_jump.after(player_movement),
-                    play_jump_sound.after(player_jump),
-                    update_grounded.after(play_jump_sound),
+                player_jump.after(player_movement),
+                play_jump_sound.after(player_jump),
+                update_grounded.after(play_jump_sound),
                 update_attack_cooldowns,
                 player_attack.after(update_attack_cooldowns),
                 player_block.after(update_attack_cooldowns),

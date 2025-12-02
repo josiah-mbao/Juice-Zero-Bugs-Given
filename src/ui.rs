@@ -655,7 +655,8 @@ fn update_damage_numbers(
         transform.translation.y += damage_number.velocity.y * time.delta_seconds();
 
         // Fade out as timer progresses
-        let alpha = 1.0 - (damage_number.timer.elapsed_secs() / damage_number.timer.duration().as_secs_f32());
+        let alpha = 1.0
+            - (damage_number.timer.elapsed_secs() / damage_number.timer.duration().as_secs_f32());
         if let Some(section) = text.sections.first_mut() {
             section.style.color = section.style.color.with_alpha(alpha);
         }
