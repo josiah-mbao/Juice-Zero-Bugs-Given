@@ -47,6 +47,9 @@
 
 ---
 
+<img width="1279" height="749" alt="2d figher" src="https://github.com/user-attachments/assets/4319f63e-2a65-4013-b27c-1bdc9b87bcb5" />
+
+
 ## 🕹️ How to Play
 
 ### Controls
