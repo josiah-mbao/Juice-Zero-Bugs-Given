@@ -14,7 +14,7 @@ use combat::CombatPlugin;
 use game_state::{AppState, BossType, GameConfig, Winner};
 use menu::MenuPlugin;
 use player::{
-    AttackCooldown, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin,
+    AIState, AttackCooldown, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin,
 };
 use ui::UiPlugin;
 
@@ -109,39 +109,63 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
         },
     ));
 
-    // Create boss sprite based on type
-    let boss_sprite = match game_config.boss {
-        BossType::NullPointer => Sprite {
-            color: Color::srgb(0.0, 0.0, 1.0), // Blue
-            custom_size: Some(Vec2::new(50.0, 100.0)),
-            ..default()
-        },
-        BossType::UndefinedBehavior => Sprite {
-            color: Color::srgb(0.5, 1.0, 0.5), // Jagged green
-            custom_size: Some(Vec2::new(70.0, 100.0)), // Wider for jagged look
-            ..default()
-        },
-        BossType::DataRace => Sprite {
-            color: Color::srgb(1.0, 0.0, 0.5), // Red
-            custom_size: Some(Vec2::new(50.0, 100.0)),
-            ..default()
-        },
-        BossType::UseAfterFree => Sprite {
-            color: Color::srgb(0.5, 0.0, 1.0), // Purple
-            custom_size: Some(Vec2::new(45.0, 110.0)), // Taller
-            ..default()
-        },
-        BossType::BufferOverflow => Sprite {
-            color: Color::srgb(1.0, 0.5, 0.0), // Orange
-            custom_size: Some(Vec2::new(60.0, 90.0)), // Shorter/wider
-            ..default()
-        },
+    // Determine Player 2 sprite and control type
+    let (player2_sprite, player2_control, player2_health) = if game_config.player2_is_human {
+        (
+            Sprite {
+                color: Color::srgb(1.0, 0.5, 0.0), // Orange for Player 2
+                custom_size: Some(Vec2::new(50.0, 100.0)),
+                ..default()
+            },
+            ControlType::Human,
+            Health {
+                current: 100,
+                max: 100,
+            },
+        )
+    } else {
+        let boss_sprite = match game_config.boss {
+            BossType::NullPointer => Sprite {
+                color: Color::srgb(0.0, 0.0, 1.0), // Blue
+                custom_size: Some(Vec2::new(50.0, 100.0)),
+                ..default()
+            },
+            BossType::UndefinedBehavior => Sprite {
+                color: Color::srgb(0.5, 1.0, 0.5), // Jagged green
+                custom_size: Some(Vec2::new(70.0, 100.0)), // Wider for jagged look
+                ..default()
+            },
+            BossType::DataRace => Sprite {
+                color: Color::srgb(1.0, 0.0, 0.5), // Red
+                custom_size: Some(Vec2::new(50.0, 100.0)),
+                ..default()
+            },
+            BossType::UseAfterFree => Sprite {
+                color: Color::srgb(0.5, 0.0, 1.0), // Purple
+                custom_size: Some(Vec2::new(45.0, 110.0)), // Taller
+                ..default()
+            },
+            BossType::BufferOverflow => Sprite {
+                color: Color::srgb(1.0, 0.5, 0.0), // Orange
+                custom_size: Some(Vec2::new(60.0, 90.0)), // Shorter/wider
+                ..default()
+            },
+        };
+        let health_mult = game_config.difficulty.health_multiplier();
+        (
+            boss_sprite,
+            ControlType::AI(game_config.boss),
+            Health {
+                current: (100.0 * health_mult) as i32,
+                max: (100.0 * health_mult) as i32,
+            },
+        )
     };
 
-    // -- Player 2 (AI Boss) --
-    commands.spawn((
+    // -- Player 2 --
+    let mut player2_entity = commands.spawn((
         SpriteBundle {
-            sprite: boss_sprite,
+            sprite: player2_sprite,
             transform: Transform::from_xyz(200.0, 0.0, 0.0),
             ..default()
         },
@@ -151,17 +175,19 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
         Collider::rectangle(50.0, 100.0),
         combat::Hurtbox,
         Player { id: 2 },
-        ControlType::AI(game_config.boss),
-        Health {
-            current: 100,
-            max: 100,
-        },
+        player2_control.clone(),
+        player2_health,
         MoveSpeed(300.0),
         FacingDirection::Left,
         AttackCooldown {
             timer: Timer::new(Duration::from_millis(300), TimerMode::Once),
         },
     ));
+
+    // Add AI state if it's AI
+    if matches!(player2_control, ControlType::AI(_)) {
+        player2_entity.insert(AIState::default());
+    }
 }
 
 #[allow(dead_code)]

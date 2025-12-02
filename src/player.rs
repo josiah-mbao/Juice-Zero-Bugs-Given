@@ -12,7 +12,8 @@ use crate::game_state::{AppState, BossType, Difficulty, GameConfig};
             app.add_systems(
                 Update,
                 (
-                    player_movement,
+                    update_ai_state,
+                    player_movement.after(update_ai_state),
                     update_attack_cooldowns,
                     player_attack.after(update_attack_cooldowns),
                     update_player_facing_direction,
@@ -57,7 +58,7 @@ pub struct Player {
     pub id: u8,
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub enum ControlType {
     Human,
     AI(BossType),
@@ -84,7 +85,38 @@ pub struct AttackCooldown {
     pub timer: Timer,
 }
 
+#[derive(Component, Clone)]
+pub enum AIState {
+    Aggressive,
+    Defensive,
+    Erratic,
+}
+
+impl Default for AIState {
+    fn default() -> Self {
+        AIState::Aggressive
+    }
+}
+
 // -- Systems --
+
+fn update_ai_state(
+    time: Res<Time>,
+    mut query: Query<(&Health, &mut AIState), With<ControlType>>,
+) {
+    for (health, mut state) in query.iter_mut() {
+        let health_ratio = health.current as f32 / health.max as f32;
+
+        // Change state based on health and time
+        if health_ratio < 0.3 {
+            *state = AIState::Defensive; // Low health: be defensive
+        } else if (time.elapsed_seconds() as i32 % 10) < 3 {
+            *state = AIState::Erratic; // Every 10 seconds, 3 seconds of erratic
+        } else {
+            *state = AIState::Aggressive; // Default aggressive
+        }
+    }
+}
 
 fn player_movement(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -96,6 +128,7 @@ fn player_movement(
         &MoveSpeed,
         &ControlType,
         &Transform,
+        Option<&AIState>,
     )>,
     player_transforms: Query<(&Transform, &Player, &ControlType)>,
 ) {
@@ -107,16 +140,29 @@ fn player_movement(
         }
     }
 
-    for (mut velocity, _player, move_speed, control, transform) in query.iter_mut() {
+    for (mut velocity, _player, move_speed, control, transform, ai_state) in query.iter_mut() {
         let mut direction = 0.0;
         match control {
             ControlType::Human => {
-                // Human player controls
-                if keyboard_input.pressed(KeyCode::KeyA) {
-                    direction -= 1.0;
-                }
-                if keyboard_input.pressed(KeyCode::KeyD) {
-                    direction += 1.0;
+                // Human player controls - different keys per player
+                match _player.id {
+                    1 => {
+                        if keyboard_input.pressed(KeyCode::KeyA) {
+                            direction -= 1.0;
+                        }
+                        if keyboard_input.pressed(KeyCode::KeyD) {
+                            direction += 1.0;
+                        }
+                    }
+                    2 => {
+                        if keyboard_input.pressed(KeyCode::ArrowLeft) {
+                            direction -= 1.0;
+                        }
+                        if keyboard_input.pressed(KeyCode::ArrowRight) {
+                            direction += 1.0;
+                        }
+                    }
+                    _ => {}
                 }
             }
             ControlType::AI(boss_type) => {
@@ -125,42 +171,62 @@ fn player_movement(
                     let distance = human_x - transform.translation.x;
                     let abs_distance = distance.abs();
 
-                    match boss_type {
+                    let mut base_direction = match boss_type {
                         BossType::NullPointer => {
                             // Vanishes occasionally - erratic movement
                             let random_time = time.elapsed_seconds() % 3.0;
                             if random_time > 2.5 {
-                                direction = rand::random::<f32>() * 4.0 - 2.0; // Random direction
+                                rand::random::<f32>() * 4.0 - 2.0 // Random direction
                             } else {
                                 // Normal movement towards player
-                                direction = if distance > 0.0 { 1.0 } else { -1.0 };
+                                if distance > 0.0 { 1.0 } else { -1.0 }
                             }
                         }
                         BossType::UndefinedBehavior => {
                             // Unpredictable erratic movement
-                            let random_time = time.elapsed_seconds().sin() as f32;
-                            direction = random_time * 2.0; // Sinusoidal erratic movement
+                            time.elapsed_seconds().sin() as f32 * 2.0 // Sinusoidal erratic movement
                         }
                         BossType::DataRace => {
                             // Aggressive approach and retreat
                             let time_phase = (time.elapsed_seconds() * 2.0).sin() as f32;
-                            direction = if time_phase > 0.0 { 1.0 } else { -1.0 };
+                            let mut dir = if time_phase > 0.0 { 1.0 } else { -1.0 };
                             if abs_distance < 100.0 {
-                                direction *= -1.0; // Retreat when close
+                                dir *= -1.0; // Retreat when close
                             } else {
                                 // Move towards player when far
-                                direction = if distance > 0.0 { 1.0 } else { -1.0 };
+                                dir = if distance > 0.0 { 1.0 } else { -1.0 };
                             }
+                            dir
                         }
                         BossType::UseAfterFree => {
                             // Steady aggressive approach
-                            direction = if distance > 0.0 { 1.0 } else { -1.0 };
+                            if distance > 0.0 { 1.0 } else { -1.0 }
                         }
                         BossType::BufferOverflow => {
                             // Slow but steady towards player
-                            direction = if distance > 0.0 { 0.5 } else { -0.5 };
+                            if distance > 0.0 { 0.5 } else { -0.5 }
+                        }
+                    };
+
+                    // Apply AI state modifiers
+                    if let Some(ai_state) = ai_state {
+                        match ai_state {
+                            AIState::Aggressive => {
+                                // Boost towards player
+                                base_direction *= 1.5;
+                            }
+                            AIState::Defensive => {
+                                // Move away from player
+                                base_direction = if distance > 0.0 { -1.0 } else { 1.0 };
+                            }
+                            AIState::Erratic => {
+                                // Add randomness
+                                base_direction += rand::random::<f32>() * 2.0 - 1.0;
+                            }
                         }
                     }
+
+                    direction = base_direction;
                 }
             }
         }

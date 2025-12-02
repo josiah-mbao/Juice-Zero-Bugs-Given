@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 use std::time::Duration;
 
-use crate::game_state::{AppState, Winner};
+use crate::game_state::{AppState, GameConfig, Winner};
 use crate::player::{ControlType, FacingDirection, Health, Player};
 
 pub struct CombatPlugin;
@@ -248,6 +248,7 @@ fn check_for_game_over(
     mut next_state: ResMut<NextState<AppState>>,
     query: Query<(&Health, &Player, &ControlType)>,
     mut winner: ResMut<Winner>,
+    config: Res<GameConfig>,
 ) {
     let mut players_alive = Vec::new();
     let mut players_dead = Vec::new();
@@ -260,11 +261,17 @@ fn check_for_game_over(
         }
     }
 
-    if !players_dead.is_empty() && players_alive.len() == 1 {
+    if players_alive.len() == 1 {
         let (winner_id, winner_control) = players_alive[0];
         winner.player_id = Some(winner_id);
         winner.is_human_winner = Some(matches!(winner_control, ControlType::Human));
         tracing::info!("Player {} wins! Game Over.", winner_id);
+        next_state.set(AppState::GameOver);
+    } else if players_alive.is_empty() && !config.player2_is_human {
+        // Both died, but only if vs AI (since human vs human doesn't make sense for draw)
+        winner.player_id = None;
+        winner.is_human_winner = None;
+        tracing::info!("Both players died! Draw.");
         next_state.set(AppState::GameOver);
     }
 }

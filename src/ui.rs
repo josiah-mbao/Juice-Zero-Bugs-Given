@@ -86,10 +86,10 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                 .iter()
                 .find(|(player, _)| player.id == 1)
                 .map(|(_, control)| match control {
-                    ControlType::Human => "PLAYER",
+                    ControlType::Human => "PLAYER 1",
                     ControlType::AI(_) => "BOSS",
                 })
-                .unwrap_or("PLAYER");
+                .unwrap_or("PLAYER 1");
 
             parent.spawn(TextBundle::from_section(
                 label,
@@ -150,10 +150,10 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                 .iter()
                 .find(|(player, _)| player.id == 2)
                 .map(|(_, control)| match control {
-                    ControlType::Human => "PLAYER",
+                    ControlType::Human => "PLAYER 2",
                     ControlType::AI(boss_type) => boss_name(*boss_type),
                 })
-                .unwrap_or("BOSS");
+                .unwrap_or("PLAYER 2");
 
             parent.spawn(TextBundle::from_section(
                 label,
@@ -192,6 +192,47 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                 });
         });
 
+    // Central Boss Display (only if vs AI)
+    let has_ai = player_query.iter().any(|(_, control)| matches!(control, ControlType::AI(_)));
+    if has_ai {
+        commands
+            .spawn(NodeBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    width: Val::Percent(50.0),
+                    height: Val::Px(40.0),
+                    top: Val::Percent(1.0),
+                    left: Val::Percent(25.0),
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::Center,
+                    ..default()
+                },
+                ..default()
+            })
+            .with_children(|parent| {
+                // Find the boss name
+                let boss_label = player_query
+                    .iter()
+                    .find_map(|(_, control)| match control {
+                        ControlType::AI(boss_type) => Some(format!("VS {}", boss_name(*boss_type))),
+                        _ => None,
+                    })
+                    .unwrap_or("VS BOSS".to_string());
+
+                parent.spawn((
+                    TextBundle::from_section(
+                        boss_label,
+                        TextStyle {
+                            font_size: 24.0,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                    ),
+                    BossDisplay,
+                ));
+            });
+    }
+
     // Pause Button - More Centrally Positioned
     commands
         .spawn((
@@ -209,20 +250,20 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                 background_color: Color::srgb(0.2, 0.2, 0.2).into(),
                 border_color: Color::WHITE.into(),
                 border_radius: BorderRadius::all(Val::Px(5.0)),
-                ..default()
-            },
-            PauseButton,
-        ))
-        .with_children(|parent| {
-            parent.spawn(TextBundle::from_section(
-                "PAUSE",
-                TextStyle {
-                    font_size: 16.0,
-                    color: Color::WHITE,
                     ..default()
                 },
-            ));
-        });
+                PauseButton,
+            ))
+            .with_children(|parent| {
+                parent.spawn(TextBundle::from_section(
+                    "PAUSE",
+                    TextStyle {
+                        font_size: 16.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                ));
+            });
 }
 
 fn update_health_bars(
@@ -239,10 +280,11 @@ fn update_health_bars(
 }
 
 fn setup_game_over_screen(mut commands: Commands, winner: Res<Winner>, game_config: Res<GameConfig>) {
-    let winner_text = match winner.is_human_winner {
-        Some(true) => "PLAYER WINS!".to_string(),
-        Some(false) => format!("{} WINS!", boss_name(game_config.boss).to_uppercase()),
-        None => "GAME OVER".to_string(),
+    let winner_text = match (winner.player_id, winner.is_human_winner) {
+        (Some(1), Some(true)) => "PLAYER 1 WINS!".to_string(),
+        (Some(2), Some(true)) => "PLAYER 2 WINS!".to_string(),
+        (Some(_), Some(false)) => format!("{} WINS!", boss_name(game_config.boss).to_uppercase()),
+        _ => "DRAW!".to_string(),
     };
 
     commands

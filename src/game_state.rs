@@ -50,6 +50,7 @@ impl Default for BossType {
 pub struct GameConfig {
     pub difficulty: Difficulty,
     pub boss: BossType,
+    pub player2_is_human: bool,
 }
 
 impl Default for GameConfig {
@@ -57,6 +58,7 @@ impl Default for GameConfig {
         GameConfig {
             difficulty: Difficulty::default(),
             boss: BossType::default(),
+            player2_is_human: false,
         }
     }
 }

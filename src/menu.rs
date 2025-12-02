@@ -101,6 +101,9 @@ struct BossDisplay;
 #[derive(Component)]
 struct DifficultyDisplay;
 
+#[derive(Component)]
+struct ModeDisplay;
+
 #[derive(Debug, Clone, Copy)]
 enum MenuAction {
     StartGame,
@@ -109,6 +112,7 @@ enum MenuAction {
     PrevBoss,
     NextDifficulty,
     PrevDifficulty,
+    TogglePlayer2,
 }
 
 // A type alias for the filter used in button interaction queries.
@@ -212,6 +216,32 @@ fn setup_main_menu(mut commands: Commands) {
                     spawn_menu_button(parent, ">", MenuAction::NextDifficulty);
                 });
 
+            // Mode Selection
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        row_gap: Val::Px(10.0),
+                        ..default()
+                    },
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn((
+                        TextBundle::from_section(
+                            "MODE: vs AI",
+                            TextStyle {
+                                font_size: 28.0,
+                                color: Color::WHITE,
+                                ..default()
+                            },
+                        ),
+                        ModeDisplay,
+                    ));
+                    spawn_menu_button(parent, "TOGGLE", MenuAction::TogglePlayer2);
+                });
+
             parent
                 .spawn(NodeBundle {
                     style: Style {
@@ -299,6 +329,9 @@ fn main_menu_interaction(
                 MenuAction::PrevDifficulty => {
                     config.difficulty = prev_difficulty(config.difficulty);
                 }
+                MenuAction::TogglePlayer2 => {
+                    config.player2_is_human = !config.player2_is_human;
+                }
             }
         }
     }
@@ -354,6 +387,7 @@ fn update_menu_display(
     mut set: ParamSet<(
         Query<&mut Text, With<BossDisplay>>,
         Query<&mut Text, With<DifficultyDisplay>>,
+        Query<&mut Text, With<ModeDisplay>>,
     )>,
     config: Res<GameConfig>,
 ) {
@@ -365,6 +399,12 @@ fn update_menu_display(
     // Update difficulty display
     for mut text in set.p1().iter_mut() {
         text.sections[0].value = format!("DIFFICULTY: {}", difficulty_name(config.difficulty));
+    }
+
+    // Update mode display
+    for mut text in set.p2().iter_mut() {
+        let mode = if config.player2_is_human { "vs Player" } else { "vs AI" };
+        text.sections[0].value = format!("MODE: {}", mode);
     }
 }
 
