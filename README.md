@@ -15,11 +15,13 @@
 **✅ Core Features Complete**: Full single-player battle system with AI opponents implemented!
 
 - **Combat System**: ✅ Complete with hitboxes, hurtboxes, health management, and damage calculations
+- **Jumping Mechanics**: ✅ Ground-based jumping with physics and collision detection
+- **Blocking System**: ✅ Defensive blocking with invulnerability and reduced knockback
 - **AI Boss System**: ✅ Fully implemented with unique behaviors for each programming bug type
 - **UI/UX**: ✅ Polished interface with health bars, labels, and winner announcements
-- **Arena**: ✅ Contained fighting environment with boundary walls
+- **Arena**: ✅ Contained fighting environment with boundary walls and ceiling
 - **Game Flow**: ✅ Complete menu system, pause, and restart functionality
-- **Visual Effects**: ✅ Boss sprites, particle systems, and color coding
+- **Visual Effects**: ✅ Boss sprites, particle systems, color coding, and blocking feedback
 - **Audio Setup**: ✅ Framework ready for sound effects and music
 - **Pause System**: ✅ Multi-modal pause with UI button and keyboard shortcuts
 
@@ -53,6 +55,8 @@
 | :--- | :---: | :---: |
 | Move Left | `A` | `←` (Left Arrow) |
 | Move Right | `D` | `→` (Right Arrow) |
+| Jump | `W` | `↑` (Up Arrow) |
+| Block | `S` | `↓` (Down Arrow) |
 | Attack | `F` | `L` |
 
 **In-Game Controls:**
@@ -99,13 +103,21 @@
 
 ## 🎯 Game Features Details
 
+### Combat Mechanics
+- **Jumping System**: Ground-based physics jumping with 600-unit upward impulse
+- **Blocking Defense**: 0.5-second invulnerability window with reduced knockback (2-second cooldown)
+- **Ground Detection**: Collision-based system prevents air jumping
+- **Visual Blocking Feedback**: Blue tint appears when blocking successfully
+
 ### Boss AI Behaviors
 - **Easy Difficulty**: 30% slower movement, 50% less frequent attacks
 - **Normal Difficulty**: Balanced gameplay
 - **Hard Difficulty**: 30% faster movement, 30% more frequent attacks
+- **AI Jumping**: Bosses occasionally jump for unpredictable movement (2% chance when grounded)
 
 ### Visual System
 - **Boss Sprites**: Each boss has unique colors and shapes representing their bug nature
+- **Blocking Effects**: Players turn blue when blocking, "Attack blocked!" messages appear
 - **Particle Effects**: 5 red particles spawn on hits with physics simulation
 - **UI Labels**: Health bars show specific boss names instead of generic "BOSS"
 
