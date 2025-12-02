@@ -383,6 +383,7 @@ fn animate_menu_background(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn update_menu_display(
     mut set: ParamSet<(
         Query<&mut Text, With<BossDisplay>>,
@@ -408,7 +409,7 @@ fn update_menu_display(
         } else {
             "vs AI"
         };
-        text.sections[0].value = format!("MODE: {}", mode);
+        text.sections[0].value = format!("MODE: {mode}");
     }
 }
 

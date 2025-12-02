@@ -64,6 +64,7 @@ fn boss_name(b: BossType) -> &'static str {
 
 // -- Systems --
 
+#[allow(clippy::type_complexity)]
 fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>) {
     // Player 1 Health Container
     commands
@@ -346,6 +347,7 @@ fn cleanup_game_over_screen(mut commands: Commands, query: Query<Entity, With<Ga
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn handle_pause_button(
     mut interaction_query: Query<
         (&Interaction, &mut BackgroundColor),
@@ -468,6 +470,7 @@ fn setup_pause_screen(mut commands: Commands) {
         });
 }
 
+#[allow(clippy::type_complexity)]
 fn handle_pause_menu_buttons(
     mut buttons_query: Query<
         (

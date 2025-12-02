@@ -99,17 +99,12 @@ pub struct BlockState {
 #[derive(Component)]
 pub struct Grounded(pub bool);
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Default)]
 pub enum AIState {
+    #[default]
     Aggressive,
     Defensive,
     Erratic,
-}
-
-impl Default for AIState {
-    fn default() -> Self {
-        AIState::Aggressive
-    }
 }
 
 // -- Systems --
@@ -129,6 +124,7 @@ fn update_ai_state(time: Res<Time>, mut query: Query<(&Health, &mut AIState), Wi
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn player_movement(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
@@ -199,11 +195,11 @@ fn player_movement(
                         }
                         BossType::UndefinedBehavior => {
                             // Unpredictable erratic movement
-                            time.elapsed_seconds().sin() as f32 * 2.0 // Sinusoidal erratic movement
+                            time.elapsed_seconds().sin() * 2.0 // Sinusoidal erratic movement
                         }
                         BossType::DataRace => {
                             // Aggressive approach and retreat
-                            let time_phase = (time.elapsed_seconds() * 2.0).sin() as f32;
+                            let time_phase = (time.elapsed_seconds() * 2.0).sin();
                             let mut dir = if time_phase > 0.0 { 1.0 } else { -1.0 };
                             if abs_distance < 100.0 {
                                 dir *= -1.0; // Retreat when close

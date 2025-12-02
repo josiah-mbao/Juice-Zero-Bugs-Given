@@ -18,21 +18,17 @@ pub struct Winner {
     pub is_human_winner: Option<bool>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum Difficulty {
     Easy,
+    #[default]
     Normal,
     Hard,
 }
 
-impl Default for Difficulty {
-    fn default() -> Self {
-        Difficulty::Normal
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum BossType {
+    #[default]
     NullPointer,
     UndefinedBehavior,
     DataRace,
@@ -40,25 +36,9 @@ pub enum BossType {
     BufferOverflow,
 }
 
-impl Default for BossType {
-    fn default() -> Self {
-        BossType::NullPointer
-    }
-}
-
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct GameConfig {
     pub difficulty: Difficulty,
     pub boss: BossType,
     pub player2_is_human: bool,
-}
-
-impl Default for GameConfig {
-    fn default() -> Self {
-        GameConfig {
-            difficulty: Difficulty::default(),
-            boss: BossType::default(),
-            player2_is_human: false,
-        }
-    }
 }

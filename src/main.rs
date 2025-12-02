@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 use std::time::Duration;
-use tracing_subscriber;
 
 // Import our modules
 mod combat;
