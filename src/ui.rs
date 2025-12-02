@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use std::time::Duration;
 
 use crate::game_state::{AppState, BossType, GameConfig, Winner};
 use crate::menu::BossDisplay;
@@ -15,6 +16,9 @@ impl Plugin for UiPlugin {
                     update_health_bars.run_if(in_state(AppState::InGame)),
                     handle_pause_button.run_if(in_state(AppState::InGame)),
                     handle_p_key_pause.run_if(in_state(AppState::InGame)),
+                    update_combo_counter.run_if(in_state(AppState::InGame)),
+                    update_damage_numbers.run_if(in_state(AppState::InGame)),
+                    spawn_damage_number.run_if(in_state(AppState::InGame)),
                 ),
             )
             .add_systems(OnEnter(AppState::Paused), setup_pause_screen)
@@ -49,6 +53,16 @@ struct ResumeButton;
 
 #[derive(Component)]
 struct ExitButton;
+
+// Combo and Damage Display
+#[derive(Component)]
+struct ComboCounter;
+
+#[derive(Component)]
+struct DamageNumber {
+    timer: Timer,
+    velocity: Vec2,
+}
 
 // -- Helper Functions --
 
@@ -539,5 +553,116 @@ fn reset_winner_on_menu(mut winner: ResMut<Winner>) {
 fn cleanup_pause_button(mut commands: Commands, query: Query<Entity, With<PauseButton>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn update_combo_counter(
+    mut commands: Commands,
+    combo_query: Query<Entity, With<ComboCounter>>,
+    mut text_query: Query<&mut Text, With<ComboCounter>>,
+    mut damage_events: EventReader<crate::combat::DamageEvent>,
+) {
+    let mut combo_count = 0;
+
+    // Count recent damage events (simplified combo tracking)
+    for _ in damage_events.read() {
+        combo_count += 1;
+    }
+
+    if combo_count > 0 {
+        // Update or create combo counter
+        if let Ok(mut text) = text_query.get_single_mut() {
+            text.sections[0].value = format!("COMBO: {}x", combo_count);
+        } else {
+            // Create combo counter if it doesn't exist
+            commands
+                .spawn(NodeBundle {
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Percent(10.0),
+                        left: Val::Percent(45.0),
+                        ..default()
+                    },
+                    ..default()
+                })
+                .with_children(|parent| {
+                    parent.spawn((
+                        TextBundle::from_section(
+                            format!("COMBO: {}x", combo_count),
+                            TextStyle {
+                                font_size: 32.0,
+                                color: Color::srgb(1.0, 1.0, 0.0), // Yellow
+                                ..default()
+                            },
+                        ),
+                        ComboCounter,
+                    ));
+                });
+        }
+    } else {
+        // Remove combo counter if combo ended
+        for entity in combo_query.iter() {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+fn spawn_damage_number(
+    mut commands: Commands,
+    mut damage_events: EventReader<crate::combat::DamageEvent>,
+    player_query: Query<(&Transform, &Player)>,
+) {
+    for event in damage_events.read() {
+        // Find the player that was damaged by checking if the target entity has a Player component
+        if let Ok((transform, _)) = player_query.get(event.target) {
+            // Spawn floating damage number as a sprite in world space
+            commands.spawn((
+                Text2dBundle {
+                    text: Text::from_section(
+                        format!("-{}", event.damage),
+                        TextStyle {
+                            font_size: 24.0,
+                            color: Color::srgb(1.0, 0.0, 0.0), // Red
+                            ..default()
+                        },
+                    ),
+                    transform: Transform::from_xyz(
+                        transform.translation.x + 20.0,
+                        transform.translation.y + 50.0,
+                        10.0, // Above other sprites
+                    ),
+                    ..default()
+                },
+                DamageNumber {
+                    timer: Timer::new(Duration::from_secs(1), TimerMode::Once),
+                    velocity: Vec2::new(0.0, 50.0), // Float upward
+                },
+            ));
+        }
+    }
+}
+
+fn update_damage_numbers(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Transform, &mut DamageNumber, &mut Text)>,
+) {
+    for (entity, mut transform, mut damage_number, mut text) in query.iter_mut() {
+        // Update timer
+        damage_number.timer.tick(time.delta());
+
+        // Move the damage number upward
+        transform.translation.y += damage_number.velocity.y * time.delta_seconds();
+
+        // Fade out as timer progresses
+        let alpha = 1.0 - (damage_number.timer.elapsed_secs() / damage_number.timer.duration().as_secs_f32());
+        if let Some(section) = text.sections.first_mut() {
+            section.style.color = section.style.color.with_alpha(alpha);
+        }
+
+        // Remove when timer finishes
+        if damage_number.timer.finished() {
+            commands.entity(entity).despawn_recursive();
+        }
     }
 }

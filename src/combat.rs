@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use crate::game_state::{AppState, GameConfig, Winner};
 use crate::player::{BlockState, ControlType, FacingDirection, Health, Player};
+use crate::GameAssets;
 
 pub struct CombatPlugin;
 
@@ -15,8 +16,10 @@ impl Plugin for CombatPlugin {
                 Update,
                 (
                     spawn_hitbox,
+                    play_attack_sound.after(spawn_hitbox),
                     despawn_hitbox_after_duration,
                     detect_collisions,
+                    play_hit_sound.after(detect_collisions),
                     apply_damage.after(detect_collisions),
                     spawn_particles_on_hit.after(apply_damage),
                     despawn_particles_after_duration.after(spawn_particles_on_hit),
@@ -313,5 +316,48 @@ fn check_for_game_over(
         winner.is_human_winner = None;
         tracing::info!("Both players died! Draw.");
         next_state.set(AppState::GameOver);
+    }
+}
+
+fn play_attack_sound(
+    mut commands: Commands,
+    mut event_reader: EventReader<SpawnHitboxEvent>,
+    assets: Res<GameAssets>,
+) {
+    for _event in event_reader.read() {
+        // Play attack sound
+        commands.spawn(AudioBundle {
+            source: assets.attack_sfx.clone(),
+            settings: PlaybackSettings::DESPAWN,
+        });
+    }
+}
+
+fn play_hit_sound(
+    mut commands: Commands,
+    mut event_reader: EventReader<DamageEvent>,
+    block_query: Query<&BlockState>,
+    assets: Res<GameAssets>,
+) {
+    for event in event_reader.read() {
+        // Check if the target was blocking
+        let is_blocking = block_query
+            .get(event.target)
+            .map(|block_state| block_state.is_blocking)
+            .unwrap_or(false);
+
+        if is_blocking {
+            // Play block sound
+            commands.spawn(AudioBundle {
+                source: assets.block_sfx.clone(),
+                settings: PlaybackSettings::DESPAWN,
+            });
+        } else {
+            // Play hit sound
+            commands.spawn(AudioBundle {
+                source: assets.hit_sfx.clone(),
+                settings: PlaybackSettings::DESPAWN,
+            });
+        }
     }
 }

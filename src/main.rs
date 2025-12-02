@@ -2,6 +2,51 @@ use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 use std::time::Duration;
 
+// Asset loading
+#[derive(Resource)]
+pub struct GameAssets {
+    pub player_animations: PlayerAnimations,
+    pub boss_animations: BossAnimations,
+    pub attack_sfx: Handle<AudioSource>,
+    pub hit_sfx: Handle<AudioSource>,
+    pub jump_sfx: Handle<AudioSource>,
+    pub block_sfx: Handle<AudioSource>,
+}
+
+#[derive(Resource)]
+pub struct PlayerAnimations {
+    pub idle: Vec<Handle<Image>>,
+    pub walk: Vec<Handle<Image>>,
+    pub attack: Vec<Handle<Image>>,
+    pub jump: Vec<Handle<Image>>,
+    pub hurt: Vec<Handle<Image>>,
+}
+
+#[derive(Resource)]
+pub struct BossAnimations {
+    pub idle: Vec<Handle<Image>>,
+    pub attack: Vec<Handle<Image>>,
+    pub hurt: Vec<Handle<Image>>,
+}
+
+// Animation Components
+#[derive(Component)]
+pub struct AnimationState {
+    pub current_animation: AnimationType,
+    pub current_frame: usize,
+    pub timer: Timer,
+    pub frame_duration: f32,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum AnimationType {
+    Idle,
+    Walking,
+    Attacking,
+    Jumping,
+    Hurt,
+}
+
 // Import our modules
 mod combat;
 mod game_state;
@@ -10,7 +55,7 @@ mod player;
 mod ui;
 
 use combat::CombatPlugin;
-use game_state::{AppState, BossType, GameConfig, Winner};
+use game_state::{AppState, GameConfig, Winner};
 use menu::MenuPlugin;
 use player::{
     AIState, AttackCooldown, BlockState, ControlType, FacingDirection, Grounded, Health, MoveSpeed,
@@ -40,13 +85,14 @@ fn main() {
         .init_state::<AppState>()
         .insert_resource(Winner::default())
         .insert_resource(GameConfig::default())
-        .add_systems(Startup, setup_camera)
+        .add_systems(Startup, (setup_camera, setup_assets))
         .add_systems(OnEnter(AppState::InGame), setup) // <-- Add this line
+        .add_systems(Update, (update_animation_state, animate_sprite).run_if(in_state(AppState::InGame)))
         .add_systems(Update, restart_game.run_if(in_state(AppState::GameOver)))
         .run();
 }
 
-fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
+fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameAssets>) {
     // Removed: commands.spawn(Camera2dBundle::default());
 
     // Some ground for the players to stand on
@@ -90,13 +136,19 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
     // -- Player 1 (Human) --
     commands.spawn((
         SpriteBundle {
+            texture: assets.player_animations.idle[0].clone(),
             sprite: Sprite {
-                color: Color::srgb(1.0, 0.0, 0.0),
                 custom_size: Some(Vec2::new(50.0, 100.0)),
                 ..default()
             },
             transform: Transform::from_xyz(-200.0, 0.0, 0.0),
             ..default()
+        },
+        AnimationState {
+            current_animation: AnimationType::Idle,
+            current_frame: 0,
+            timer: Timer::new(Duration::from_secs_f32(0.15), TimerMode::Repeating),
+            frame_duration: 0.15,
         },
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
@@ -123,13 +175,9 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
     ));
 
     // Determine Player 2 sprite and control type
-    let (player2_sprite, player2_control, player2_health) = if game_config.player2_is_human {
+    let (player2_initial_texture, player2_control, player2_health) = if game_config.player2_is_human {
         (
-            Sprite {
-                color: Color::srgb(1.0, 0.5, 0.0), // Orange for Player 2
-                custom_size: Some(Vec2::new(50.0, 100.0)),
-                ..default()
-            },
+            assets.player_animations.idle[0].clone(), // Use player sprite for human P2
             ControlType::Human,
             Health {
                 current: 100,
@@ -137,36 +185,9 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
             },
         )
     } else {
-        let boss_sprite = match game_config.boss {
-            BossType::NullPointer => Sprite {
-                color: Color::srgb(0.0, 0.0, 1.0), // Blue
-                custom_size: Some(Vec2::new(50.0, 100.0)),
-                ..default()
-            },
-            BossType::UndefinedBehavior => Sprite {
-                color: Color::srgb(0.5, 1.0, 0.5),         // Jagged green
-                custom_size: Some(Vec2::new(70.0, 100.0)), // Wider for jagged look
-                ..default()
-            },
-            BossType::DataRace => Sprite {
-                color: Color::srgb(1.0, 0.0, 0.5), // Red
-                custom_size: Some(Vec2::new(50.0, 100.0)),
-                ..default()
-            },
-            BossType::UseAfterFree => Sprite {
-                color: Color::srgb(0.5, 0.0, 1.0),         // Purple
-                custom_size: Some(Vec2::new(45.0, 110.0)), // Taller
-                ..default()
-            },
-            BossType::BufferOverflow => Sprite {
-                color: Color::srgb(1.0, 0.5, 0.0),        // Orange
-                custom_size: Some(Vec2::new(60.0, 90.0)), // Shorter/wider
-                ..default()
-            },
-        };
         let health_mult = game_config.difficulty.health_multiplier();
         (
-            boss_sprite,
+            assets.boss_animations.idle[0].clone(), // Use boss sprite for AI
             ControlType::AI(game_config.boss),
             Health {
                 current: (100.0 * health_mult) as i32,
@@ -178,9 +199,19 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
     // -- Player 2 --
     let mut player2_entity = commands.spawn((
         SpriteBundle {
-            sprite: player2_sprite,
+            texture: player2_initial_texture,
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(50.0, 100.0)),
+                ..default()
+            },
             transform: Transform::from_xyz(200.0, 0.0, 0.0),
             ..default()
+        },
+        AnimationState {
+            current_animation: AnimationType::Idle,
+            current_frame: 0,
+            timer: Timer::new(Duration::from_secs_f32(0.15), TimerMode::Repeating),
+            frame_duration: 0.15,
         },
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
@@ -243,6 +274,150 @@ fn restart_game(
     }
 }
 
+fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let player_animations = PlayerAnimations {
+        idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_idle.png")],
+        walk: vec![
+            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_walk1.png"),
+            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_walk2.png"),
+        ],
+        attack: vec![
+            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_kick.png"),
+            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action1.png"),
+            asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action2.png"),
+        ],
+        jump: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_jump.png")],
+        hurt: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_hurt.png")],
+    };
+
+    let boss_animations = BossAnimations {
+        idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_idle.png")],
+        attack: vec![
+            asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action1.png"),
+            asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action2.png"),
+        ],
+        hurt: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_back.png")],
+    };
+
+    let assets = GameAssets {
+        player_animations,
+        boss_animations,
+        // Sound effects - using OGG format for better Bevy compatibility
+        attack_sfx: asset_server.load("audio/attack.ogg"),
+        hit_sfx: asset_server.load("audio/hit.ogg"),
+        jump_sfx: asset_server.load("audio/jump.ogg"),
+        block_sfx: asset_server.load("audio/hit.ogg"), // Reuse hit sound for blocks
+    };
+
+    commands.insert_resource(assets);
+}
+
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
+}
+
+#[derive(Component)]
+pub struct AttackInput {
+    pub is_attacking: bool,
+}
+
+// Animation Systems
+fn update_animation_state(
+    time: Res<Time>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(
+        &mut AnimationState,
+        &LinearVelocity,
+        &Grounded,
+        &AttackCooldown,
+        &Health,
+        &Player,
+        &ControlType,
+    )>,
+) {
+    for (mut animation_state, velocity, grounded, attack_cooldown, health, player, control_type) in query.iter_mut() {
+        // Check immediate input states for responsive animations
+        let (attack_pressed, jump_pressed) = match control_type {
+            ControlType::Human => {
+                let attack_key = if player.id == 1 { KeyCode::KeyF } else { KeyCode::KeyL };
+                let jump_key = if player.id == 1 { KeyCode::KeyW } else { KeyCode::ArrowUp };
+                (
+                    keyboard_input.pressed(attack_key) || !attack_cooldown.timer.finished(), // Show attack animation while cooling down too
+                    keyboard_input.pressed(jump_key)
+                )
+            },
+            ControlType::AI(_) => (
+                !attack_cooldown.timer.finished(), // AI uses cooldown
+                false // AI jumping is random, not input-based
+            ),
+        };
+
+        // Determine new animation based on state with higher priority for immediate actions
+        let new_animation = if attack_pressed {
+            AnimationType::Attacking
+        } else if jump_pressed || !grounded.0 {
+            AnimationType::Jumping
+        } else if health.current < health.max / 3 {
+            AnimationType::Hurt
+        } else if velocity.x.abs() > 1.0 { // Much lower threshold for immediate walking response
+            AnimationType::Walking
+        } else {
+            AnimationType::Idle
+        };
+
+        // Change animation if different (immediate response)
+        if animation_state.current_animation != new_animation {
+            animation_state.current_animation = new_animation;
+            animation_state.current_frame = 0;
+            animation_state.timer.reset();
+        }
+
+        // Update animation timer
+        animation_state.timer.tick(time.delta());
+    }
+}
+
+fn animate_sprite(
+    assets: Res<GameAssets>,
+    mut query: Query<(
+        &mut Handle<Image>,
+        &mut AnimationState,
+        &ControlType,
+    )>,
+) {
+    for (mut texture, mut animation_state, control_type) in query.iter_mut() {
+        // Check if it's time to advance frame
+        if animation_state.timer.finished() {
+            // Store frame duration before borrowing animation_state mutably
+            let frame_duration = animation_state.frame_duration;
+
+            // Get the animation frames based on type
+            let frames = match control_type {
+                ControlType::Human => match animation_state.current_animation {
+                    AnimationType::Idle => &assets.player_animations.idle,
+                    AnimationType::Walking => &assets.player_animations.walk,
+                    AnimationType::Attacking => &assets.player_animations.attack,
+                    AnimationType::Jumping => &assets.player_animations.jump,
+                    AnimationType::Hurt => &assets.player_animations.hurt,
+                },
+                ControlType::AI(_) => match animation_state.current_animation {
+                    AnimationType::Idle => &assets.boss_animations.idle,
+                    AnimationType::Walking => &assets.boss_animations.idle, // Boss doesn't have walk anim
+                    AnimationType::Attacking => &assets.boss_animations.attack,
+                    AnimationType::Jumping => &assets.boss_animations.idle, // Boss doesn't have jump anim
+                    AnimationType::Hurt => &assets.boss_animations.hurt,
+                },
+            };
+
+            // Advance to next frame
+            animation_state.current_frame = (animation_state.current_frame + 1) % frames.len();
+
+            // Update texture
+            *texture = frames[animation_state.current_frame].clone();
+
+            // Reset timer for next frame
+            animation_state.timer.set_duration(Duration::from_secs_f32(frame_duration));
+            animation_state.timer.reset();
+        }
+    }
 }

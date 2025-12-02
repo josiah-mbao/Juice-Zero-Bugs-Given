@@ -4,6 +4,7 @@ use bevy_xpbd_2d::prelude::*;
 use crate::combat;
 use crate::combat::SpawnHitboxEvent;
 use crate::game_state::{AppState, BossType, Difficulty, GameConfig};
+use crate::GameAssets;
 
 pub struct PlayerPlugin;
 
@@ -14,8 +15,9 @@ impl Plugin for PlayerPlugin {
             (
                 update_ai_state,
                 player_movement.after(update_ai_state),
-                player_jump.after(player_movement),
-                update_grounded.after(player_jump),
+                    player_jump.after(player_movement),
+                    play_jump_sound.after(player_jump),
+                    update_grounded.after(play_jump_sound),
                 update_attack_cooldowns,
                 player_attack.after(update_attack_cooldowns),
                 player_block.after(update_attack_cooldowns),
@@ -550,5 +552,20 @@ fn cleanup_game_entities(mut commands: Commands, query: GameEntityQuery) {
     tracing::info!("Cleaning up game entities...");
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn play_jump_sound(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    mut event_reader: EventReader<crate::combat::SpawnHitboxEvent>,
+) {
+    // For now, we'll play jump sound when attacks happen (temporary)
+    // In a real implementation, we'd have a separate JumpEvent
+    for _ in event_reader.read() {
+        commands.spawn(AudioBundle {
+            source: assets.jump_sfx.clone(),
+            settings: PlaybackSettings::DESPAWN,
+        });
     }
 }
