@@ -14,7 +14,8 @@ use combat::CombatPlugin;
 use game_state::{AppState, BossType, GameConfig, Winner};
 use menu::MenuPlugin;
 use player::{
-    AIState, AttackCooldown, BlockState, ControlType, FacingDirection, Grounded, Health, MoveSpeed, Player, PlayerPlugin,
+    AIState, AttackCooldown, BlockState, ControlType, FacingDirection, Grounded, Health, MoveSpeed,
+    Player, PlayerPlugin,
 };
 use ui::UiPlugin;
 
@@ -144,7 +145,7 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
                 ..default()
             },
             BossType::UndefinedBehavior => Sprite {
-                color: Color::srgb(0.5, 1.0, 0.5), // Jagged green
+                color: Color::srgb(0.5, 1.0, 0.5),         // Jagged green
                 custom_size: Some(Vec2::new(70.0, 100.0)), // Wider for jagged look
                 ..default()
             },
@@ -154,12 +155,12 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
                 ..default()
             },
             BossType::UseAfterFree => Sprite {
-                color: Color::srgb(0.5, 0.0, 1.0), // Purple
+                color: Color::srgb(0.5, 0.0, 1.0),         // Purple
                 custom_size: Some(Vec2::new(45.0, 110.0)), // Taller
                 ..default()
             },
             BossType::BufferOverflow => Sprite {
-                color: Color::srgb(1.0, 0.5, 0.0), // Orange
+                color: Color::srgb(1.0, 0.5, 0.0),        // Orange
                 custom_size: Some(Vec2::new(60.0, 90.0)), // Shorter/wider
                 ..default()
             },

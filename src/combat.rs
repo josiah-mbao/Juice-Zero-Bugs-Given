@@ -83,7 +83,9 @@ fn spawn_hitbox(
 
                 commands
                     .spawn((
-                        SpatialBundle::from_transform(Transform::from_translation(offset.extend(0.0))),
+                        SpatialBundle::from_transform(Transform::from_translation(
+                            offset.extend(0.0),
+                        )),
                         // Corrected: Use .rectangle() instead of .cuboid()
                         Collider::rectangle(70.0, 40.0),
                         Sensor,
@@ -98,7 +100,9 @@ fn spawn_hitbox(
                     .set_parent(event.attacker);
             }
             Err(_) => {
-                tracing::warn!("Attempted to spawn hitbox for entity without FacingDirection component");
+                tracing::warn!(
+                    "Attempted to spawn hitbox for entity without FacingDirection component"
+                );
             }
         }
     }
@@ -170,9 +174,9 @@ fn detect_collisions(
                             .insert(ExternalImpulse::new(direction * recoil_strength * 0.5));
 
                         // Push attacker slightly backward
-                        commands.entity(hitbox.owner).insert(
-                            ExternalImpulse::new(-direction * recoil_strength * 0.2),
-                        );
+                        commands
+                            .entity(hitbox.owner)
+                            .insert(ExternalImpulse::new(-direction * recoil_strength * 0.2));
                     }
                 } else {
                     // Normal hit - send damage event
@@ -198,9 +202,9 @@ fn detect_collisions(
                             .insert(ExternalImpulse::new(direction * recoil_strength));
 
                         // Push attacker slightly backward
-                        commands.entity(hitbox.owner).insert(
-                            ExternalImpulse::new(-direction * recoil_strength * 0.3),
-                        );
+                        commands
+                            .entity(hitbox.owner)
+                            .insert(ExternalImpulse::new(-direction * recoil_strength * 0.3));
                     }
                 }
 
@@ -223,7 +227,9 @@ fn apply_damage(
                 tracing::info!("Player {} hit! {} HP left", player.id, health.current);
             }
             Err(_) => {
-                tracing::warn!("Tried to apply damage to entity without Health or Player components");
+                tracing::warn!(
+                    "Tried to apply damage to entity without Health or Player components"
+                );
             }
         }
     }

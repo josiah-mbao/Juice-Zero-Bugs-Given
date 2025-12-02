@@ -194,7 +194,9 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
         });
 
     // Central Boss Display (only if vs AI)
-    let has_ai = player_query.iter().any(|(_, control)| matches!(control, ControlType::AI(_)));
+    let has_ai = player_query
+        .iter()
+        .any(|(_, control)| matches!(control, ControlType::AI(_)));
     if has_ai {
         commands
             .spawn(NodeBundle {
@@ -251,20 +253,20 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
                 background_color: Color::srgb(0.2, 0.2, 0.2).into(),
                 border_color: Color::WHITE.into(),
                 border_radius: BorderRadius::all(Val::Px(5.0)),
+                ..default()
+            },
+            PauseButton,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "PAUSE",
+                TextStyle {
+                    font_size: 16.0,
+                    color: Color::WHITE,
                     ..default()
                 },
-                PauseButton,
-            ))
-            .with_children(|parent| {
-                parent.spawn(TextBundle::from_section(
-                    "PAUSE",
-                    TextStyle {
-                        font_size: 16.0,
-                        color: Color::WHITE,
-                        ..default()
-                    },
-                ));
-            });
+            ));
+        });
 }
 
 fn update_health_bars(
@@ -280,7 +282,11 @@ fn update_health_bars(
     }
 }
 
-fn setup_game_over_screen(mut commands: Commands, winner: Res<Winner>, game_config: Res<GameConfig>) {
+fn setup_game_over_screen(
+    mut commands: Commands,
+    winner: Res<Winner>,
+    game_config: Res<GameConfig>,
+) {
     let winner_text = match (winner.player_id, winner.is_human_winner) {
         (Some(1), Some(true)) => "PLAYER 1 WINS!".to_string(),
         (Some(2), Some(true)) => "PLAYER 2 WINS!".to_string(),
@@ -464,7 +470,12 @@ fn setup_pause_screen(mut commands: Commands) {
 
 fn handle_pause_menu_buttons(
     mut buttons_query: Query<
-        (&Interaction, &mut BackgroundColor, Option<&ResumeButton>, Option<&ExitButton>),
+        (
+            &Interaction,
+            &mut BackgroundColor,
+            Option<&ResumeButton>,
+            Option<&ExitButton>,
+        ),
         Changed<Interaction>,
     >,
     mut next_state: ResMut<NextState<AppState>>,

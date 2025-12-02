@@ -1,4 +1,4 @@
-use crate::game_state::{AppState, GameConfig, BossType, Difficulty};
+use crate::game_state::{AppState, BossType, Difficulty, GameConfig};
 use bevy::prelude::*;
 
 fn next_boss(current: BossType) -> BossType {
@@ -403,7 +403,11 @@ fn update_menu_display(
 
     // Update mode display
     for mut text in set.p2().iter_mut() {
-        let mode = if config.player2_is_human { "vs Player" } else { "vs AI" };
+        let mode = if config.player2_is_human {
+            "vs Player"
+        } else {
+            "vs AI"
+        };
         text.sections[0].value = format!("MODE: {}", mode);
     }
 }

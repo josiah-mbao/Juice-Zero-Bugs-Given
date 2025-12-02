@@ -5,45 +5,45 @@ use crate::combat;
 use crate::combat::SpawnHitboxEvent;
 use crate::game_state::{AppState, BossType, Difficulty, GameConfig};
 
-    pub struct PlayerPlugin;
+pub struct PlayerPlugin;
 
-    impl Plugin for PlayerPlugin {
-        fn build(&self, app: &mut App) {
-            app.add_systems(
-                Update,
-                (
-                    update_ai_state,
-                    player_movement.after(update_ai_state),
-                    player_jump.after(player_movement),
-                    update_grounded.after(player_jump),
-                    update_attack_cooldowns,
-                    player_attack.after(update_attack_cooldowns),
-                    player_block.after(update_attack_cooldowns),
-                    update_block_state.after(player_block),
-                    update_player_facing_direction,
-                )
-                    .run_if(in_state(AppState::InGame)),
+impl Plugin for PlayerPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            (
+                update_ai_state,
+                player_movement.after(update_ai_state),
+                player_jump.after(player_movement),
+                update_grounded.after(player_jump),
+                update_attack_cooldowns,
+                player_attack.after(update_attack_cooldowns),
+                player_block.after(update_attack_cooldowns),
+                update_block_state.after(player_block),
+                update_player_facing_direction,
             )
-            .add_systems(OnExit(AppState::InGame), cleanup_game_entities);
+                .run_if(in_state(AppState::InGame)),
+        )
+        .add_systems(OnExit(AppState::InGame), cleanup_game_entities);
+    }
+}
+
+impl Difficulty {
+    pub fn speed_multiplier(&self) -> f32 {
+        match self {
+            Difficulty::Easy => 0.7,
+            Difficulty::Normal => 1.0,
+            Difficulty::Hard => 1.3,
         }
     }
 
-    impl Difficulty {
-        pub fn speed_multiplier(&self) -> f32 {
-            match self {
-                Difficulty::Easy => 0.7,
-                Difficulty::Normal => 1.0,
-                Difficulty::Hard => 1.3,
-            }
+    pub fn attack_frequency_multiplier(&self) -> f32 {
+        match self {
+            Difficulty::Easy => 1.5, // less frequent attacks
+            Difficulty::Normal => 1.0,
+            Difficulty::Hard => 0.7, // more frequent attacks
         }
-
-        pub fn attack_frequency_multiplier(&self) -> f32 {
-            match self {
-                Difficulty::Easy => 1.5, // less frequent attacks
-                Difficulty::Normal => 1.0,
-                Difficulty::Hard => 0.7, // more frequent attacks
-            }
-        }
+    }
 
     #[allow(dead_code)]
     pub fn health_multiplier(&self) -> f32 {
@@ -53,7 +53,7 @@ use crate::game_state::{AppState, BossType, Difficulty, GameConfig};
             Difficulty::Hard => 1.2,
         }
     }
-    }
+}
 
 // -- Components --
 
@@ -114,10 +114,7 @@ impl Default for AIState {
 
 // -- Systems --
 
-fn update_ai_state(
-    time: Res<Time>,
-    mut query: Query<(&Health, &mut AIState), With<ControlType>>,
-) {
+fn update_ai_state(time: Res<Time>, mut query: Query<(&Health, &mut AIState), With<ControlType>>) {
     for (health, mut state) in query.iter_mut() {
         let health_ratio = health.current as f32 / health.max as f32;
 
@@ -193,7 +190,11 @@ fn player_movement(
                                 rand::random::<f32>() * 4.0 - 2.0 // Random direction
                             } else {
                                 // Normal movement towards player
-                                if distance > 0.0 { 1.0 } else { -1.0 }
+                                if distance > 0.0 {
+                                    1.0
+                                } else {
+                                    -1.0
+                                }
                             }
                         }
                         BossType::UndefinedBehavior => {
@@ -214,11 +215,19 @@ fn player_movement(
                         }
                         BossType::UseAfterFree => {
                             // Steady aggressive approach
-                            if distance > 0.0 { 1.0 } else { -1.0 }
+                            if distance > 0.0 {
+                                1.0
+                            } else {
+                                -1.0
+                            }
                         }
                         BossType::BufferOverflow => {
                             // Slow but steady towards player
-                            if distance > 0.0 { 0.5 } else { -0.5 }
+                            if distance > 0.0 {
+                                0.5
+                            } else {
+                                -0.5
+                            }
                         }
                     };
 
@@ -348,13 +357,11 @@ fn player_block(
     for (player, control, mut block_state) in query.iter_mut() {
         if block_state.cooldown_timer.finished() {
             let should_block = match control {
-                ControlType::Human => {
-                    keyboard_input.just_pressed(match player.id {
-                        1 => KeyCode::KeyS,
-                        2 => KeyCode::ArrowDown,
-                        _ => KeyCode::KeyS,
-                    })
-                }
+                ControlType::Human => keyboard_input.just_pressed(match player.id {
+                    1 => KeyCode::KeyS,
+                    2 => KeyCode::ArrowDown,
+                    _ => KeyCode::KeyS,
+                }),
                 ControlType::AI(_) => {
                     // AI blocks occasionally when health is low
                     false // For now, no AI blocking
@@ -371,10 +378,7 @@ fn player_block(
     }
 }
 
-fn update_block_state(
-    time: Res<Time>,
-    mut query: Query<(&mut BlockState, &mut Sprite)>,
-) {
+fn update_block_state(time: Res<Time>, mut query: Query<(&mut BlockState, &mut Sprite)>) {
     for (mut block_state, mut sprite) in query.iter_mut() {
         block_state.block_timer.tick(time.delta());
         block_state.cooldown_timer.tick(time.delta());
@@ -401,13 +405,11 @@ fn player_jump(
     for (player, control, grounded, mut velocity) in query.iter_mut() {
         if grounded.0 {
             let should_jump = match control {
-                ControlType::Human => {
-                    keyboard_input.just_pressed(match player.id {
-                        1 => KeyCode::KeyW,
-                        2 => KeyCode::ArrowUp,
-                        _ => KeyCode::KeyW,
-                    })
-                }
+                ControlType::Human => keyboard_input.just_pressed(match player.id {
+                    1 => KeyCode::KeyW,
+                    2 => KeyCode::ArrowUp,
+                    _ => KeyCode::KeyW,
+                }),
                 ControlType::AI(_) => {
                     // AI jumps occasionally for variety
                     rand::random::<f32>() < 0.02 // 2% chance per frame when grounded
