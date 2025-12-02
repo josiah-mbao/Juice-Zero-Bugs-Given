@@ -14,6 +14,8 @@ use crate::game_state::{AppState, BossType, Difficulty, GameConfig};
                 (
                     update_ai_state,
                     player_movement.after(update_ai_state),
+                    player_jump.after(player_movement),
+                    update_grounded.after(player_jump),
                     update_attack_cooldowns,
                     player_attack.after(update_attack_cooldowns),
                     player_block.after(update_attack_cooldowns),
@@ -93,6 +95,9 @@ pub struct BlockState {
     pub block_timer: Timer,
     pub cooldown_timer: Timer,
 }
+
+#[derive(Component)]
+pub struct Grounded(pub bool);
 
 #[derive(Component, Clone)]
 pub enum AIState {
@@ -385,6 +390,58 @@ fn update_block_state(
         } else {
             // Reset to original color (this is simplistic - in reality you'd store original color)
             // For now, assume red for P1, blue for P2, but this will be overridden by boss colors
+        }
+    }
+}
+
+fn player_jump(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(&Player, &ControlType, &Grounded, &mut LinearVelocity)>,
+) {
+    for (player, control, grounded, mut velocity) in query.iter_mut() {
+        if grounded.0 {
+            let should_jump = match control {
+                ControlType::Human => {
+                    keyboard_input.just_pressed(match player.id {
+                        1 => KeyCode::KeyW,
+                        2 => KeyCode::ArrowUp,
+                        _ => KeyCode::KeyW,
+                    })
+                }
+                ControlType::AI(_) => {
+                    // AI jumps occasionally for variety
+                    rand::random::<f32>() < 0.02 // 2% chance per frame when grounded
+                }
+            };
+
+            if should_jump {
+                velocity.y = 600.0; // Jump impulse
+                tracing::info!("Player {} jumped", player.id);
+            }
+        }
+    }
+}
+
+fn update_grounded(
+    mut collision_events: EventReader<Collision>,
+    mut query: Query<(Entity, &mut Grounded)>,
+) {
+    // First, set all players to not grounded
+    for (_, mut grounded) in query.iter_mut() {
+        grounded.0 = false;
+    }
+
+    // Then, set grounded to true if colliding with ground
+    for collision in collision_events.read() {
+        let contacts = &collision.0;
+        for (entity, mut grounded) in query.iter_mut() {
+            // Check if this entity is involved in the collision
+            if contacts.entity1 == entity || contacts.entity2 == entity {
+                // For simplicity, assume any collision means grounded
+                // In a more complex system, you'd check if it's with the ground
+                grounded.0 = true;
+                break;
+            }
         }
     }
 }

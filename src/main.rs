@@ -14,7 +14,7 @@ use combat::CombatPlugin;
 use game_state::{AppState, BossType, GameConfig, Winner};
 use menu::MenuPlugin;
 use player::{
-    AIState, AttackCooldown, BlockState, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin,
+    AIState, AttackCooldown, BlockState, ControlType, FacingDirection, Grounded, Health, MoveSpeed, Player, PlayerPlugin,
 };
 use ui::UiPlugin;
 
@@ -112,6 +112,7 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
             block_timer: Timer::new(Duration::from_millis(500), TimerMode::Once),
             cooldown_timer: Timer::new(Duration::from_secs(2), TimerMode::Once),
         },
+        Grounded(true), // Start grounded
     ));
 
     // Determine Player 2 sprite and control type
@@ -192,6 +193,7 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
             block_timer: Timer::new(Duration::from_millis(500), TimerMode::Once),
             cooldown_timer: Timer::new(Duration::from_secs(2), TimerMode::Once),
         },
+        Grounded(true), // Start grounded
     ));
 
     // Add AI state if it's AI
