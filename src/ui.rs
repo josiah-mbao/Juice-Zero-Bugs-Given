@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::game_state::{AppState, BossType, GameConfig, Winner};
+use crate::menu::BossDisplay;
 use crate::player::{ControlType, Health, Player};
 
 pub struct UiPlugin;

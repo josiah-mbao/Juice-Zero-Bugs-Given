@@ -14,7 +14,7 @@ use combat::CombatPlugin;
 use game_state::{AppState, BossType, GameConfig, Winner};
 use menu::MenuPlugin;
 use player::{
-    AIState, AttackCooldown, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin,
+    AIState, AttackCooldown, BlockState, ControlType, FacingDirection, Health, MoveSpeed, Player, PlayerPlugin,
 };
 use ui::UiPlugin;
 
@@ -107,6 +107,11 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
         AttackCooldown {
             timer: Timer::new(Duration::from_millis(300), TimerMode::Once),
         },
+        BlockState {
+            is_blocking: false,
+            block_timer: Timer::new(Duration::from_millis(500), TimerMode::Once),
+            cooldown_timer: Timer::new(Duration::from_secs(2), TimerMode::Once),
+        },
     ));
 
     // Determine Player 2 sprite and control type
@@ -181,6 +186,11 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>) {
         FacingDirection::Left,
         AttackCooldown {
             timer: Timer::new(Duration::from_millis(300), TimerMode::Once),
+        },
+        BlockState {
+            is_blocking: false,
+            block_timer: Timer::new(Duration::from_millis(500), TimerMode::Once),
+            cooldown_timer: Timer::new(Duration::from_secs(2), TimerMode::Once),
         },
     ));
 

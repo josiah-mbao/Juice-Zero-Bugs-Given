@@ -96,7 +96,7 @@ struct MainMenu;
 struct MenuBackgroundCircle;
 
 #[derive(Component)]
-struct BossDisplay;
+pub struct BossDisplay;
 
 #[derive(Component)]
 struct DifficultyDisplay;
@@ -263,9 +263,9 @@ fn setup_main_menu(mut commands: Commands) {
 
             // Controls info
             parent.spawn(TextBundle::from_section(
-                "Controls: Player 1 - A/D to move, F to attack | Player 2 - Arrows to move, L to attack",
+                "Controls: Player 1 - A/D to move, F to attack, S to block | Player 2 - Arrows to move, L to attack, Down to block",
                 TextStyle {
-                    font_size: 16.0,
+                    font_size: 14.0,
                     color: Color::srgb(0.6, 0.6, 0.6),
                     ..default()
                 },

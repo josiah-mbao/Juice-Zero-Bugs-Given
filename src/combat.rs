@@ -3,7 +3,7 @@ use bevy_xpbd_2d::prelude::*;
 use std::time::Duration;
 
 use crate::game_state::{AppState, GameConfig, Winner};
-use crate::player::{ControlType, FacingDirection, Health, Player};
+use crate::player::{BlockState, ControlType, FacingDirection, Health, Player};
 
 pub struct CombatPlugin;
 
@@ -122,6 +122,7 @@ fn detect_collisions(
     mut collisions: EventReader<Collision>,
     hitbox_query: Query<&Hitbox>,
     hurtbox_query: Query<&Hurtbox>,
+    block_query: Query<&BlockState>,
     mut damage_writer: EventWriter<DamageEvent>,
     transform_query: Query<&Transform>,
 ) {
@@ -142,35 +143,68 @@ fn detect_collisions(
         if let Ok(hitbox) = hitbox_query.get(hitbox_entity) {
             // Prevent hitting yourself
             if hitbox.owner != hurtbox_entity {
-                // Send one damage event
-                damage_writer.send(DamageEvent {
-                    target: hurtbox_entity,
-                    damage: hitbox.damage,
-                });
+                // Check if target is blocking
+                let is_blocking = block_query
+                    .get(hurtbox_entity)
+                    .map(|block_state| block_state.is_blocking)
+                    .unwrap_or(false);
 
-                // Apply recoil forces to both attacker and defender
-                if let (Ok(attacker_transform), Ok(defender_transform)) = (
-                    transform_query.get(hitbox.owner),
-                    transform_query.get(hurtbox_entity),
-                ) {
-                    let direction_vec3 = (defender_transform.translation
-                        - attacker_transform.translation)
-                        .normalize();
-                    let direction = Vec2::new(direction_vec3.x, direction_vec3.y); // Convert to Vec2
-                    let recoil_strength = 500.0; // Force to push players apart
+                if is_blocking {
+                    // Blocked! No damage, reduced recoil
+                    tracing::info!("Attack blocked!");
 
-                    // Push defender away from attacker
-                    commands
-                        .entity(hurtbox_entity)
-                        .insert(ExternalImpulse::new(direction * recoil_strength));
+                    // Apply reduced recoil forces
+                    if let (Ok(attacker_transform), Ok(defender_transform)) = (
+                        transform_query.get(hitbox.owner),
+                        transform_query.get(hurtbox_entity),
+                    ) {
+                        let direction_vec3 = (defender_transform.translation
+                            - attacker_transform.translation)
+                            .normalize();
+                        let direction = Vec2::new(direction_vec3.x, direction_vec3.y);
+                        let recoil_strength = 200.0; // Reduced recoil on block
 
-                    // Push attacker slightly backward
-                    commands.entity(hitbox.owner).insert(
-                        ExternalImpulse::new(-direction * recoil_strength * 0.3), // Less force for attacker
-                    );
+                        // Push defender slightly
+                        commands
+                            .entity(hurtbox_entity)
+                            .insert(ExternalImpulse::new(direction * recoil_strength * 0.5));
+
+                        // Push attacker slightly backward
+                        commands.entity(hitbox.owner).insert(
+                            ExternalImpulse::new(-direction * recoil_strength * 0.2),
+                        );
+                    }
+                } else {
+                    // Normal hit - send damage event
+                    damage_writer.send(DamageEvent {
+                        target: hurtbox_entity,
+                        damage: hitbox.damage,
+                    });
+
+                    // Apply full recoil forces
+                    if let (Ok(attacker_transform), Ok(defender_transform)) = (
+                        transform_query.get(hitbox.owner),
+                        transform_query.get(hurtbox_entity),
+                    ) {
+                        let direction_vec3 = (defender_transform.translation
+                            - attacker_transform.translation)
+                            .normalize();
+                        let direction = Vec2::new(direction_vec3.x, direction_vec3.y);
+                        let recoil_strength = 500.0; // Force to push players apart
+
+                        // Push defender away from attacker
+                        commands
+                            .entity(hurtbox_entity)
+                            .insert(ExternalImpulse::new(direction * recoil_strength));
+
+                        // Push attacker slightly backward
+                        commands.entity(hitbox.owner).insert(
+                            ExternalImpulse::new(-direction * recoil_strength * 0.3),
+                        );
+                    }
                 }
 
-                // Added: Despawn the hitbox immediately so it can't hit again.
+                // Despawn the hitbox immediately so it can't hit again.
                 commands.entity(hitbox_entity).despawn_recursive();
             }
         }

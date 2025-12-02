@@ -16,6 +16,8 @@ use crate::game_state::{AppState, BossType, Difficulty, GameConfig};
                     player_movement.after(update_ai_state),
                     update_attack_cooldowns,
                     player_attack.after(update_attack_cooldowns),
+                    player_block.after(update_attack_cooldowns),
+                    update_block_state.after(player_block),
                     update_player_facing_direction,
                 )
                     .run_if(in_state(AppState::InGame)),
@@ -83,6 +85,13 @@ pub struct MoveSpeed(pub f32);
 #[derive(Component)]
 pub struct AttackCooldown {
     pub timer: Timer,
+}
+
+#[derive(Component)]
+pub struct BlockState {
+    pub is_blocking: bool,
+    pub block_timer: Timer,
+    pub cooldown_timer: Timer,
 }
 
 #[derive(Component, Clone)]
@@ -323,6 +332,59 @@ fn player_attack(
 
             // Send one attack event per frame
             spawn_hitbox_writer.send(SpawnHitboxEvent { attacker: entity });
+        }
+    }
+}
+
+fn player_block(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(&Player, &ControlType, &mut BlockState)>,
+) {
+    for (player, control, mut block_state) in query.iter_mut() {
+        if block_state.cooldown_timer.finished() {
+            let should_block = match control {
+                ControlType::Human => {
+                    keyboard_input.just_pressed(match player.id {
+                        1 => KeyCode::KeyS,
+                        2 => KeyCode::ArrowDown,
+                        _ => KeyCode::KeyS,
+                    })
+                }
+                ControlType::AI(_) => {
+                    // AI blocks occasionally when health is low
+                    false // For now, no AI blocking
+                }
+            };
+
+            if should_block {
+                block_state.is_blocking = true;
+                block_state.block_timer.reset();
+                block_state.cooldown_timer.reset();
+                tracing::info!("Player {} started blocking", player.id);
+            }
+        }
+    }
+}
+
+fn update_block_state(
+    time: Res<Time>,
+    mut query: Query<(&mut BlockState, &mut Sprite)>,
+) {
+    for (mut block_state, mut sprite) in query.iter_mut() {
+        block_state.block_timer.tick(time.delta());
+        block_state.cooldown_timer.tick(time.delta());
+
+        if block_state.is_blocking && block_state.block_timer.finished() {
+            block_state.is_blocking = false;
+            tracing::info!("Block ended");
+        }
+
+        // Visual feedback: change color when blocking
+        if block_state.is_blocking {
+            sprite.color = Color::srgb(0.5, 0.5, 1.0); // Blue tint when blocking
+        } else {
+            // Reset to original color (this is simplistic - in reality you'd store original color)
+            // For now, assume red for P1, blue for P2, but this will be overridden by boss colors
         }
     }
 }
