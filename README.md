@@ -4,7 +4,7 @@
 [![Powered by Bevy](https://img.shields.io/badge/Powered%20by-Bevy-blue?logo=bevy)](https://bevyengine.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-<img width="1392" height="860" alt="Screenshot 2025-08-28 at 10 08 21" src="https://github.com/user-attachments/assets/ccddc26f-4967-428d-a8cd-e5d3f22b9d9e" />
+<img width="1385" height="863" alt="2d fighter menu" src="https://github.com/user-attachments/assets/631b4d25-cb89-4f87-a137-30b6d530f26e" />
 
 **Juice: Zero Bugs Given** is a Rust-powered 2D fighter game where you play as *Juice*, battling bosses inspired by infamous programming nightmares. Each battle represents a classic bug that Rust was designed to defeat, blending coding humor with arcade-style action.
 
@@ -47,7 +47,6 @@
 
 ---
 
-<img width="1279" height="749" alt="2d figher" src="https://github.com/user-attachments/assets/4319f63e-2a65-4013-b27c-1bdc9b87bcb5" />
 
 
 ## 🕹️ How to Play
@@ -66,6 +65,9 @@
 * **P** or **Click PAUSE button**: Pause game with menu options
 * **Escape**: Resume from pause (keyboard alternative)
 * **Space (on Game Over screen):** Return to Main Menu
+
+  <img width="1385" height="863" alt="2d fighter action" src="https://github.com/user-attachments/assets/0cf168c8-be1a-41b1-88f3-b5969d9b46a9" />
+
 
 ---
 
