@@ -1,29 +1,38 @@
-# Juice: Zero Bugs Given
+# Juice: Zero Bugs Given 🕹️
 
 [![Built with Rust](https://img.shields.io/badge/Built%20with-Rust-orange?logo=rust)](https://www.rust-lang.org/)
 [![Powered by Bevy](https://img.shields.io/badge/Powered%20by-Bevy-blue?logo=bevy)](https://bevyengine.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![itch.io](https://img.shields.io/badge/Available%20on-itch.io-fa5c5c?logo=itch.io)](https://josiah-mbao.itch.io/juice-zero-bugs-given)
 
 <img width="1392" height="860" alt="Screenshot 2025-08-28 at 10 08 21" src="https://github.com/user-attachments/assets/ccddc26f-4967-428d-a8cd-e5d3f22b9d9e" />
 
-**Juice: Zero Bugs Given** is a Rust-powered 2D fighter game where you play as *Juice*, battling bosses inspired by infamous programming nightmares. Each battle represents a classic bug that Rust was designed to defeat, blending coding humor with arcade-style action.
+**Juice: Zero Bugs Given** is a Rust-powered 2D fighter game where you play as *Juice*, battling bosses inspired by infamous programming nightmares. Each battle represents a classic bug that Rust was designed to defeat, blending coding humor with arcade-style action and atmospheric background music.
 
 ---
 
 ## 📊 Project Status
 
-**✅ Core Features Complete**: Full single-player battle system with AI opponents implemented!
+**🎉 POLISHED & READY FOR ITCH.IO**: Complete single-player battle system with professional presentation!
 
+### ✅ Core Combat Features
 - **Combat System**: ✅ Complete with hitboxes, hurtboxes, health management, and damage calculations
 - **Jumping Mechanics**: ✅ Ground-based jumping with physics and collision detection
 - **Blocking System**: ✅ Defensive blocking with invulnerability and reduced knockback
 - **AI Boss System**: ✅ Fully implemented with unique behaviors for each programming bug type
-- **UI/UX**: ✅ Polished interface with health bars, labels, and winner announcements
-- **Arena**: ✅ Contained fighting environment with boundary walls and ceiling
-- **Game Flow**: ✅ Complete menu system, pause, and restart functionality
+
+### ✅ Visual & Audio Polish
+- **Menu Background**: ✅ Custom animated background with smooth floating effects
+- **UI/UX Polish**: ✅ All text in crisp white with increased font sizes for readability
+- **Background Music**: ✅ Atmospheric looping music in menu with auto-play/stop
 - **Visual Effects**: ✅ Boss sprites, particle systems, color coding, and blocking feedback
-- **Audio Setup**: ✅ Framework ready for sound effects and music
+- **Arena**: ✅ Contained fighting environment with boundary walls and ceiling
+
+### ✅ Game Systems
+- **Game Flow**: ✅ Complete menu system, pause, and restart functionality
+- **Audio Framework**: ✅ Full sound effects and background music integration
 - **Pause System**: ✅ Multi-modal pause with UI button and keyboard shortcuts
+- **Difficulty Scaling**: ✅ Easy/Normal/Hard modes with balanced progression
 
 ---
 
@@ -38,7 +47,8 @@
   * **🟠 Buffer Overflow** – Slow but powerful movement with devastating attacks (Wide orange sprite)
 * **Rich Visual Feedback**: Dynamic health bars with specific boss names (e.g., "NULL POINTER", "DATA RACE"), clear winner announcements, particle effects on damage
 * **Particle Effects System**: Hit explosions with physics-based red particles for satisfying combat feedback
-* **Audio Framework**: Ready for sound effects and background music (attack sounds, hit effects, victory music)
+* **Atmospheric Audio**: Background music in menu with sound effects for attacks, hits, and blocks
+* **Polished Menu**: Custom animated background with floating effects and crisp white text
 * **Advanced Pause System**: Multi-modal pause with centralized UI button, P key shortcut, and full pause menu with Resume/Quit options
 * **Containment System**: Invisible arena boundaries prevent falling off screen edges
 * **Difficulty Scaling**: Easy/Normal/Hard modes with speed and attack frequency adjustments
@@ -131,9 +141,10 @@
 - **State Preservation**: Game state frozen during pause
 
 ### Audio Framework
-- **Integration Ready**: Bevy's audio system integrated
+- **Background Music**: ✅ Atmospheric looping music in main menu with auto-play/stop
+- **Sound Effects**: ✅ Attack sounds, hit effects, and block feedback
 - **Event System**: Combat events structured for sound playback
-- **Extensible**: Easy to add sound files for attacks, hits, background music
+- **Audio Management**: State-aware music system with proper cleanup
 
 ---
 
