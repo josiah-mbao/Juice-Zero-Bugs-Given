@@ -7,6 +7,9 @@ use std::time::Duration;
 pub struct GameAssets {
     pub player_animations: PlayerAnimations,
     pub boss_animations: BossAnimations,
+    pub menu_background: Handle<Image>,
+    pub arena_background: Handle<Image>,
+    pub menu_music: Handle<AudioSource>,
     pub attack_sfx: Handle<AudioSource>,
     pub hit_sfx: Handle<AudioSource>,
     pub jump_sfx: Handle<AudioSource>,
@@ -89,6 +92,11 @@ fn main() {
         .add_systems(OnEnter(AppState::InGame), setup) // <-- Add this line
         .add_systems(
             Update,
+            play_menu_music.run_if(in_state(AppState::MainMenu)),
+        )
+        .add_systems(OnExit(AppState::MainMenu), stop_menu_music)
+        .add_systems(
+            Update,
             (update_animation_state, animate_sprite).run_if(in_state(AppState::InGame)),
         )
         .add_systems(Update, restart_game.run_if(in_state(AppState::GameOver)))
@@ -96,23 +104,21 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameAssets>) {
+    // Arena background - positioned behind everything
+    commands.spawn(SpriteBundle {
+        texture: assets.arena_background.clone(),
+        transform: Transform::from_xyz(0.0, 0.0, -10.0), // Behind all game elements
+        ..default()
+    });
+
     // Removed: commands.spawn(Camera2dBundle::default());
 
-    // Some ground for the players to stand on
+    // Invisible ground for the players to stand on (physics only, no visual)
     commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                // Corrected: Use .srgb() instead of .rgb()
-                color: Color::srgb(0.7, 0.7, 0.8),
-                custom_size: Some(Vec2::new(1200.0, 50.0)),
-                ..default()
-            },
-            transform: Transform::from_xyz(0.0, -200.0, 0.0),
-            ..default()
-        },
         RigidBody::Static,
         // Corrected: Use .rectangle() instead of .cuboid()
         Collider::rectangle(1200.0, 50.0),
+        Transform::from_xyz(0.0, -200.0, 0.0),
     ));
 
     // Left boundary wall
@@ -318,6 +324,9 @@ fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
     let assets = GameAssets {
         player_animations,
         boss_animations,
+        menu_background: asset_server.load("home-screen.png"),
+        arena_background: asset_server.load("a-vibrant-2d-fighting-game-arena.png"),
+        menu_music: asset_server.load("audio/menu_music.ogg"),
         // Sound effects - using OGG format for better Bevy compatibility
         attack_sfx: asset_server.load("audio/attack.ogg"),
         hit_sfx: asset_server.load("audio/hit.ogg"),
@@ -444,5 +453,42 @@ fn animate_sprite(
                 .set_duration(Duration::from_secs_f32(frame_duration));
             animation_state.timer.reset();
         }
+    }
+}
+
+// Menu Music Systems
+#[derive(Component)]
+struct MenuMusic;
+
+fn play_menu_music(
+    mut commands: Commands,
+    assets: Option<Res<GameAssets>>,
+    music_query: Query<&MenuMusic>,
+) {
+    // Only play music if assets are loaded and no music is already playing
+    if let Some(assets) = assets {
+        if music_query.is_empty() {
+            println!("🎵 Starting menu music..."); // Use println for guaranteed output
+            commands.spawn((
+                AudioBundle {
+                    source: assets.menu_music.clone(),
+                    settings: PlaybackSettings {
+                        mode: bevy::audio::PlaybackMode::Loop,
+                        volume: bevy::audio::Volume::new(10.0), // Increased volume significantly
+                        ..default()
+                    },
+                },
+                MenuMusic,
+            ));
+            println!("🎵 Menu music spawned!");
+        }
+    } else {
+        println!("🎵 Waiting for assets to load...");
+    }
+}
+
+fn stop_menu_music(mut commands: Commands, query: Query<Entity, With<MenuMusic>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
     }
 }

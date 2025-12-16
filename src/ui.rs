@@ -28,7 +28,7 @@ impl Plugin for UiPlugin {
             )
             .add_systems(OnExit(AppState::Paused), (cleanup_pause_screen,))
             .add_systems(OnEnter(AppState::MainMenu), reset_winner_on_menu)
-            .add_systems(OnExit(AppState::InGame), cleanup_pause_button)
+            .add_systems(OnExit(AppState::InGame), (cleanup_pause_button, cleanup_game_ui))
             .add_systems(OnEnter(AppState::GameOver), setup_game_over_screen)
             .add_systems(OnExit(AppState::GameOver), cleanup_game_over_screen);
     }
@@ -38,6 +38,9 @@ impl Plugin for UiPlugin {
 
 #[derive(Component)]
 struct HealthBar(u8); // Holds the player ID (1 or 2)
+
+#[derive(Component)]
+struct HealthBarContainer; // For cleanup of health bar UI containers
 
 #[derive(Component)]
 struct GameOverScreen;
@@ -82,20 +85,23 @@ fn boss_name(b: BossType) -> &'static str {
 fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>) {
     // Player 1 Health Container
     commands
-        .spawn(NodeBundle {
-            style: Style {
-                position_type: PositionType::Absolute,
-                width: Val::Percent(40.0),
-                height: Val::Px(60.0),
-                left: Val::Percent(5.0),
-                top: Val::Percent(2.0),
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                row_gap: Val::Px(5.0),
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    width: Val::Percent(40.0),
+                    height: Val::Px(60.0),
+                    left: Val::Percent(5.0),
+                    top: Val::Percent(2.0),
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
+                    row_gap: Val::Px(5.0),
+                    ..default()
+                },
                 ..default()
             },
-            ..default()
-        })
+            HealthBarContainer,
+        ))
         .with_children(|parent| {
             // Label - Find the label for player 1
             let label = player_query
@@ -146,20 +152,23 @@ fn setup_ui(mut commands: Commands, player_query: Query<(&Player, &ControlType)>
 
     // Player 2 Health Container
     commands
-        .spawn(NodeBundle {
-            style: Style {
-                position_type: PositionType::Absolute,
-                width: Val::Percent(40.0),
-                height: Val::Px(60.0),
-                right: Val::Percent(5.0),
-                top: Val::Percent(2.0),
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                row_gap: Val::Px(5.0),
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    width: Val::Percent(40.0),
+                    height: Val::Px(60.0),
+                    right: Val::Percent(5.0),
+                    top: Val::Percent(2.0),
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
+                    row_gap: Val::Px(5.0),
+                    ..default()
+                },
                 ..default()
             },
-            ..default()
-        })
+            HealthBarContainer,
+        ))
         .with_children(|parent| {
             // Label - Find the label for player 2
             let label = player_query
@@ -665,5 +674,12 @@ fn update_damage_numbers(
         if damage_number.timer.finished() {
             commands.entity(entity).despawn_recursive();
         }
+    }
+}
+
+// Cleanup all game UI elements when exiting InGame state
+fn cleanup_game_ui(mut commands: Commands, query: Query<Entity, Or<(With<HealthBar>, With<HealthBarContainer>, With<BossDisplay>, With<ComboCounter>, With<DamageNumber>)>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }

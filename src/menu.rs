@@ -60,7 +60,10 @@ pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(AppState::MainMenu), setup_main_menu)
-            .add_systems(OnEnter(AppState::MainMenu), spawn_menu_background)
+            .add_systems(
+                Update,
+                spawn_menu_background.run_if(in_state(AppState::MainMenu)),
+            )
             .add_systems(
                 Update,
                 main_menu_interaction.run_if(in_state(AppState::MainMenu)),
@@ -135,7 +138,7 @@ fn setup_main_menu(mut commands: Commands) {
                     row_gap: Val::Px(20.0),
                     ..default()
                 },
-                background_color: Color::srgb(0.1, 0.1, 0.15).into(),
+                background_color: Color::srgba(0.0, 0.0, 0.0, 0.0).into(), // Transparent to show background image
                 ..default()
             },
             MainMenu,
@@ -146,17 +149,27 @@ fn setup_main_menu(mut commands: Commands) {
                 "JUICE: ZERO BUGS GIVEN",
                 TextStyle {
                     font_size: 60.0,
-                    color: Color::WHITE,
+                    color: Color::WHITE, // Changed to white
                     ..default()
                 },
             ));
 
-            // Subtitle
+            // Subtitle - Rust Homage
+            parent.spawn(TextBundle::from_section(
+                "Memory Safe • Fearless Concurrency • Zero Cost Abstractions",
+                TextStyle {
+                    font_size: 22.0, // Increased by 2 points
+                    color: Color::WHITE, // Changed to white
+                    ..default()
+                },
+            ));
+
+            // Additional tagline
             parent.spawn(TextBundle::from_section(
                 "Fight the bugs that Rust was designed to defeat!",
                 TextStyle {
-                    font_size: 24.0,
-                    color: Color::srgb(0.8, 0.8, 0.8),
+                    font_size: 18.0, // Increased by 2 points
+                    color: Color::WHITE, // Changed to white
                     ..default()
                 },
             ));
@@ -179,8 +192,8 @@ fn setup_main_menu(mut commands: Commands) {
                         TextBundle::from_section(
                             "BOSS: Null Pointer",
                             TextStyle {
-                                font_size: 28.0,
-                                color: Color::WHITE,
+                                font_size: 30.0, // Increased by 2 points
+                                color: Color::WHITE, // Changed to white
                                 ..default()
                             },
                         ),
@@ -206,8 +219,8 @@ fn setup_main_menu(mut commands: Commands) {
                         TextBundle::from_section(
                             "DIFFICULTY: Normal",
                             TextStyle {
-                                font_size: 28.0,
-                                color: Color::WHITE,
+                                font_size: 30.0, // Increased by 2 points
+                                color: Color::WHITE, // Changed to white
                                 ..default()
                             },
                         ),
@@ -232,8 +245,8 @@ fn setup_main_menu(mut commands: Commands) {
                         TextBundle::from_section(
                             "MODE: vs AI",
                             TextStyle {
-                                font_size: 28.0,
-                                color: Color::WHITE,
+                                font_size: 34.0, // Increased by 2 points
+                                color: Color::WHITE, // Changed to white
                                 ..default()
                             },
                         ),
@@ -265,8 +278,8 @@ fn setup_main_menu(mut commands: Commands) {
             parent.spawn(TextBundle::from_section(
                 "Controls: Player 1 - A/D/W/S to move/jump/block, F to attack | Player 2 - Arrows to move/jump, L to attack, Down to block",
                 TextStyle {
-                    font_size: 12.0,
-                    color: Color::srgb(0.6, 0.6, 0.6),
+                    font_size: 14.0, // Increased by 2 points
+                    color: Color::WHITE, // Changed to white
                     ..default()
                 },
             ));
@@ -293,7 +306,7 @@ fn spawn_menu_button(parent: &mut ChildBuilder, text: &str, action: MenuAction) 
             parent.spawn(TextBundle::from_section(
                 text,
                 TextStyle {
-                    font_size: 24.0,
+                    font_size: 26.0, // Increased by 2 points
                     color: Color::WHITE,
                     ..default()
                 },
@@ -349,25 +362,25 @@ fn menu_button_color(
     }
 }
 
-fn spawn_menu_background(mut commands: Commands) {
-    use rand::Rng;
-    // Corrected: Reverted to the non-deprecated function names for your rand version.
-    let mut rng = rand::rng();
-    for _ in 0..20 {
-        let x = rng.random_range(-600.0..600.0);
-        let y = rng.random_range(-300.0..300.0);
-        let scale = rng.random_range(0.5..2.0);
+pub fn spawn_menu_background(
+    mut commands: Commands,
+    assets: Res<crate::GameAssets>,
+    query: Query<&MenuBackgroundCircle>,
+) {
+    // Only spawn if background doesn't already exist
+    if query.is_empty() {
+        // Spawn fullscreen menu background image
         commands.spawn((
             SpriteBundle {
+                texture: assets.menu_background.clone(),
                 sprite: Sprite {
-                    color: Color::srgba(0.3, 0.6, 1.0, 0.15),
-                    custom_size: Some(Vec2::splat(80.0 * scale)),
+                    custom_size: Some(Vec2::new(2000.0, 1200.0)), // Even larger to ensure full screen coverage
                     ..default()
                 },
-                transform: Transform::from_xyz(x, y, -1.0),
+                transform: Transform::from_xyz(0.0, 0.0, -5.0), // Behind menu UI but above default
                 ..default()
             },
-            MenuBackgroundCircle,
+            MenuBackgroundCircle, // Reusing component name for cleanup
         ));
     }
 }
@@ -378,8 +391,15 @@ fn animate_menu_background(
 ) {
     let t = time.elapsed_seconds();
     for (i, mut transform) in query.iter_mut().enumerate() {
-        transform.translation.y += (t.sin() + i as f32 * 0.1).sin() * 0.5;
-        transform.translation.x += (t.cos() + i as f32 * 0.1).cos() * 0.2;
+        // Create bounded oscillating movement around center
+        let base_x = 0.0;
+        let base_y = 0.0;
+        let amplitude_x = 25.0; // Move up to 25 units left/right
+        let amplitude_y = 20.0; // Move up to 20 units up/down
+        let speed = 0.2; // Very slow, gentle movement
+
+        transform.translation.x = base_x + (t * speed + i as f32 * 0.5).sin() * amplitude_x;
+        transform.translation.y = base_y + (t * speed + i as f32 * 0.5).cos() * amplitude_y;
     }
 }
 
@@ -395,11 +415,13 @@ fn update_menu_display(
     // Update boss display
     for mut text in set.p0().iter_mut() {
         text.sections[0].value = format!("BOSS: {}", boss_name(config.boss));
+        text.sections[0].style.color = Color::WHITE; // Changed to white for consistency
     }
 
     // Update difficulty display
     for mut text in set.p1().iter_mut() {
         text.sections[0].value = format!("DIFFICULTY: {}", difficulty_name(config.difficulty));
+        text.sections[0].style.color = Color::WHITE; // Changed to white for consistency
     }
 
     // Update mode display
@@ -410,6 +432,8 @@ fn update_menu_display(
             "vs AI"
         };
         text.sections[0].value = format!("MODE: {mode}");
+        text.sections[0].style.color = Color::WHITE; // Changed to white for better readability
+        text.sections[0].style.font_size = 32.0; // Slightly larger for better visibility
     }
 }
 
