@@ -35,6 +35,7 @@ impl Plugin for CombatPlugin {
 #[derive(Event)]
 pub struct SpawnHitboxEvent {
     pub attacker: Entity,
+    pub attack_type: crate::player::AttackType,
 }
 
 #[derive(Event)]
@@ -79,9 +80,35 @@ fn spawn_hitbox(
     for event in event_reader.read() {
         match query.get(event.attacker) {
             Ok(facing) => {
-                let offset = match facing {
-                    FacingDirection::Right => Vec2::new(60.0, 0.0),
-                    FacingDirection::Left => Vec2::new(-60.0, 0.0),
+                // Different properties based on attack type
+                let (offset, size, damage, duration) = match event.attack_type {
+                    crate::player::AttackType::Light => (
+                        match facing {
+                            FacingDirection::Right => Vec2::new(55.0, 0.0),
+                            FacingDirection::Left => Vec2::new(-55.0, 0.0),
+                        },
+                        Vec2::new(60.0, 35.0), // Smaller hitbox
+                        3,                      // Lower damage
+                        Duration::from_millis(120), // Shorter duration
+                    ),
+                    crate::player::AttackType::Heavy => (
+                        match facing {
+                            FacingDirection::Right => Vec2::new(70.0, 0.0),
+                            FacingDirection::Left => Vec2::new(-70.0, 0.0),
+                        },
+                        Vec2::new(80.0, 45.0), // Larger hitbox
+                        8,                      // Higher damage
+                        Duration::from_millis(200), // Longer duration
+                    ),
+                    crate::player::AttackType::Kick => (
+                        match facing {
+                            FacingDirection::Right => Vec2::new(65.0, -10.0), // Slightly lower for kick
+                            FacingDirection::Left => Vec2::new(-65.0, -10.0),
+                        },
+                        Vec2::new(70.0, 40.0), // Medium hitbox
+                        5,                      // Medium damage
+                        Duration::from_millis(160), // Medium duration
+                    ),
                 };
 
                 commands
@@ -89,15 +116,14 @@ fn spawn_hitbox(
                         SpatialBundle::from_transform(Transform::from_translation(
                             offset.extend(0.0),
                         )),
-                        // Corrected: Use .rectangle() instead of .cuboid()
-                        Collider::rectangle(70.0, 40.0),
+                        Collider::rectangle(size.x, size.y),
                         Sensor,
                         Hitbox {
-                            damage: 5,
+                            damage,
                             owner: event.attacker,
                         },
                         HitboxDuration {
-                            timer: Timer::new(Duration::from_millis(150), TimerMode::Once),
+                            timer: Timer::new(duration, TimerMode::Once),
                         },
                     ))
                     .set_parent(event.attacker);

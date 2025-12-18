@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
+use std::time::Duration;
 
 use crate::combat;
 use crate::combat::SpawnHitboxEvent;
@@ -89,6 +90,13 @@ pub struct MoveSpeed(pub f32);
 #[derive(Component)]
 pub struct AttackCooldown {
     pub timer: Timer,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum AttackType {
+    Light,
+    Heavy,
+    Kick,
 }
 
 #[derive(Component)]
@@ -294,56 +302,95 @@ fn player_attack(
             continue;
         }
 
-        let should_attack = match control {
+        // Determine attack type for human players
+        let attack_type = match control {
             ControlType::Human => {
-                // Human player controls - press and release required (no spamming)
-                keyboard_input.just_pressed(if player.id == 1 {
-                    KeyCode::KeyF
+                let (light_key, heavy_key, kick_key) = if player.id == 1 {
+                    (KeyCode::KeyF, KeyCode::KeyR, KeyCode::KeyT) // P1: F=Light, R=Heavy, T=Kick
                 } else {
-                    KeyCode::KeyL
-                })
+                    (KeyCode::KeyL, KeyCode::KeyO, KeyCode::KeyP) // P2: L=Light, O=Heavy, P=Kick
+                };
+
+                if keyboard_input.just_pressed(light_key) {
+                    Some(AttackType::Light)
+                } else if keyboard_input.just_pressed(heavy_key) {
+                    Some(AttackType::Heavy)
+                } else if keyboard_input.just_pressed(kick_key) {
+                    Some(AttackType::Kick)
+                } else {
+                    None
+                }
             }
             ControlType::AI(boss_type) => {
-                // AI attack logic
+                // AI attack logic - determine attack type based on boss behavior
                 if let Some(human_pos) = human_position {
                     let distance = (human_pos - transform.translation).length();
 
-                    match boss_type {
+                    let should_attack = match boss_type {
                         BossType::NullPointer => {
-                            // Sporadic attacks
+                            // Sporadic attacks - prefers light attacks
                             let phase = time.elapsed_seconds() % 4.0;
                             let threshold = 3.5 * config.difficulty.attack_frequency_multiplier();
                             distance < 150.0 && phase > threshold
                         }
                         BossType::UndefinedBehavior => {
-                            // Random attacks
+                            // Random attacks - mixed attack types
                             distance < 200.0 && rand::random::<f32>() < 0.05
                         }
                         BossType::DataRace => {
-                            // Rapid attacks when close
+                            // Rapid attacks when close - prefers light attacks
                             distance < 120.0 && (time.elapsed_seconds() * 3.0).fract() < 0.3
                         }
                         BossType::UseAfterFree => {
-                            // Steady attack intervals
+                            // Steady attack intervals - prefers heavy attacks
                             distance < 180.0 && (time.elapsed_seconds() % 2.0) < 0.2
                         }
                         BossType::BufferOverflow => {
-                            // Slow but powerful attacks
+                            // Slow but powerful attacks - always heavy
                             distance < 160.0 && (time.elapsed_seconds() % 5.0) < 0.5
                         }
+                    };
+
+                    if should_attack {
+                        // Choose attack type based on boss personality
+                        Some(match boss_type {
+                            BossType::NullPointer => AttackType::Light, // Fast erratic attacks
+                            BossType::UndefinedBehavior => {
+                                // Random attack type
+                                match rand::random::<u32>() % 3 {
+                                    0 => AttackType::Light,
+                                    1 => AttackType::Heavy,
+                                    _ => AttackType::Kick,
+                                }
+                            }
+                            BossType::DataRace => AttackType::Light, // Fast rapid attacks
+                            BossType::UseAfterFree => AttackType::Heavy, // Powerful steady attacks
+                            BossType::BufferOverflow => AttackType::Heavy, // Slow powerful attacks
+                        })
+                    } else {
+                        None
                     }
                 } else {
-                    false
+                    None
                 }
             }
         };
 
-        if should_attack {
-            // Start cooldown timer
+        if let Some(attack_type) = attack_type {
+            // Start cooldown timer (longer for heavy attacks)
+            let cooldown_duration = match attack_type {
+                AttackType::Light => Duration::from_millis(250), // Quick recovery
+                AttackType::Heavy => Duration::from_millis(400), // Longer recovery
+                AttackType::Kick => Duration::from_millis(300),  // Medium recovery
+            };
+            cooldown.timer.set_duration(cooldown_duration);
             cooldown.timer.reset();
 
-            // Send one attack event per frame
-            spawn_hitbox_writer.send(SpawnHitboxEvent { attacker: entity });
+            // Send attack event with type
+            spawn_hitbox_writer.send(SpawnHitboxEvent {
+                attacker: entity,
+                attack_type,
+            });
         }
     }
 }

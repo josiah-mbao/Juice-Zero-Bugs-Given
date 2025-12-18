@@ -30,6 +30,9 @@ pub struct CharacterAnimations {
     pub victory: Vec<Handle<Image>>,
     pub fall: Vec<Handle<Image>>,
     pub special: Vec<Handle<Image>>,
+    pub light_attack: Vec<Handle<Image>>,
+    pub heavy_attack: Vec<Handle<Image>>,
+    pub kick_attack: Vec<Handle<Image>>,
 }
 
 #[derive(Resource)]
@@ -78,6 +81,9 @@ pub enum AnimationType {
     Victory,
     Falling,
     SpecialAttack,
+    LightAttack,
+    HeavyAttack,
+    KickAttack,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -406,6 +412,12 @@ fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
             ],
             fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_fall.png")],
             special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_kick.png")],
+            light_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action1.png")],
+            heavy_attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action2.png"),
+            ],
+            kick_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_kick.png")],
         },
         zombie: CharacterAnimations {
             idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_idle.png")],
@@ -427,6 +439,12 @@ fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
             ],
             fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_fall.png")],
             special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_kick.png")],
+            light_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action1.png")],
+            heavy_attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action2.png"),
+            ],
+            kick_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_kick.png")],
         },
         adventurer: CharacterAnimations {
             idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_idle.png")],
@@ -448,6 +466,12 @@ fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
             ],
             fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_fall.png")],
             special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_kick.png")],
+            light_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_action1.png")],
+            heavy_attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_action2.png"),
+            ],
+            kick_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_kick.png")],
         },
         female: CharacterAnimations {
             idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_idle.png")],
@@ -469,6 +493,12 @@ fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
             ],
             fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_fall.png")],
             special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_kick.png")],
+            light_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_action1.png")],
+            heavy_attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_action2.png"),
+            ],
+            kick_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_kick.png")],
         },
         soldier: CharacterAnimations {
             idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_idle.png")],
@@ -490,6 +520,12 @@ fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
             ],
             fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_fall.png")],
             special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_kick.png")],
+            light_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_action1.png")],
+            heavy_attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_action2.png"),
+            ],
+            kick_attack: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_kick.png")],
         },
     };
 
@@ -541,12 +577,12 @@ fn update_animation_state(
         query.iter_mut()
     {
         // Check immediate input states for responsive animations
-        let (attack_pressed, jump_pressed) = match control_type {
+        let (light_attack_pressed, heavy_attack_pressed, kick_attack_pressed, jump_pressed) = match control_type {
             ControlType::Human => {
-                let attack_key = if player.id == 1 {
-                    KeyCode::KeyF
+                let (light_key, heavy_key, kick_key) = if player.id == 1 {
+                    (KeyCode::KeyF, KeyCode::KeyR, KeyCode::KeyT) // P1: F=Light, R=Heavy, T=Kick
                 } else {
-                    KeyCode::KeyL
+                    (KeyCode::KeyL, KeyCode::KeyO, KeyCode::KeyP) // P2: L=Light, O=Heavy, P=Kick
                 };
                 let jump_key = if player.id == 1 {
                     KeyCode::KeyW
@@ -554,13 +590,17 @@ fn update_animation_state(
                     KeyCode::ArrowUp
                 };
                 (
-                    keyboard_input.pressed(attack_key) || !attack_cooldown.timer.finished(), // Show attack animation while cooling down too
+                    keyboard_input.pressed(light_key) || (!attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::LightAttack)),
+                    keyboard_input.pressed(heavy_key) || (!attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::HeavyAttack)),
+                    keyboard_input.pressed(kick_key) || (!attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::KickAttack)),
                     keyboard_input.pressed(jump_key),
                 )
             }
             ControlType::AI(_) => (
-                !attack_cooldown.timer.finished(), // AI uses cooldown
-                false,                             // AI jumping is random, not input-based
+                !attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::LightAttack),
+                !attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::HeavyAttack),
+                !attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::KickAttack),
+                false, // AI jumping is random, not input-based
             ),
         };
 
@@ -575,8 +615,12 @@ fn update_animation_state(
             AnimationType::Victory
         } else if is_blocking {
             AnimationType::Blocking
-        } else if attack_pressed {
-            AnimationType::Attacking
+        } else if light_attack_pressed {
+            AnimationType::LightAttack
+        } else if heavy_attack_pressed {
+            AnimationType::HeavyAttack
+        } else if kick_attack_pressed {
+            AnimationType::KickAttack
         } else if jump_pressed || !grounded.0 {
             AnimationType::Jumping
         } else if health.current < health.max / 3 {
@@ -615,7 +659,9 @@ fn animate_sprite(
                 CharacterType::Player => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.player.idle,
                     AnimationType::Walking => &assets.all_character_animations.player.walk,
-                    AnimationType::Attacking => &assets.all_character_animations.player.attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.player.light_attack,
+                    AnimationType::HeavyAttack => &assets.all_character_animations.player.heavy_attack,
+                    AnimationType::KickAttack => &assets.all_character_animations.player.kick_attack,
                     AnimationType::Jumping => &assets.all_character_animations.player.jump,
                     AnimationType::Hurt => &assets.all_character_animations.player.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.player.block,
@@ -626,7 +672,9 @@ fn animate_sprite(
                 CharacterType::Zombie => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.zombie.idle,
                     AnimationType::Walking => &assets.all_character_animations.zombie.walk,
-                    AnimationType::Attacking => &assets.all_character_animations.zombie.attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.zombie.light_attack,
+                    AnimationType::HeavyAttack => &assets.all_character_animations.zombie.heavy_attack,
+                    AnimationType::KickAttack => &assets.all_character_animations.zombie.kick_attack,
                     AnimationType::Jumping => &assets.all_character_animations.zombie.jump,
                     AnimationType::Hurt => &assets.all_character_animations.zombie.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.zombie.block,
@@ -637,7 +685,9 @@ fn animate_sprite(
                 CharacterType::Adventurer => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.adventurer.idle,
                     AnimationType::Walking => &assets.all_character_animations.adventurer.walk,
-                    AnimationType::Attacking => &assets.all_character_animations.adventurer.attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.adventurer.light_attack,
+                    AnimationType::HeavyAttack => &assets.all_character_animations.adventurer.heavy_attack,
+                    AnimationType::KickAttack => &assets.all_character_animations.adventurer.kick_attack,
                     AnimationType::Jumping => &assets.all_character_animations.adventurer.jump,
                     AnimationType::Hurt => &assets.all_character_animations.adventurer.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.adventurer.block,
@@ -648,7 +698,9 @@ fn animate_sprite(
                 CharacterType::Female => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.female.idle,
                     AnimationType::Walking => &assets.all_character_animations.female.walk,
-                    AnimationType::Attacking => &assets.all_character_animations.female.attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.female.light_attack,
+                    AnimationType::HeavyAttack => &assets.all_character_animations.female.heavy_attack,
+                    AnimationType::KickAttack => &assets.all_character_animations.female.kick_attack,
                     AnimationType::Jumping => &assets.all_character_animations.female.jump,
                     AnimationType::Hurt => &assets.all_character_animations.female.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.female.block,
@@ -659,7 +711,9 @@ fn animate_sprite(
                 CharacterType::Soldier => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.soldier.idle,
                     AnimationType::Walking => &assets.all_character_animations.soldier.walk,
-                    AnimationType::Attacking => &assets.all_character_animations.soldier.attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.soldier.light_attack,
+                    AnimationType::HeavyAttack => &assets.all_character_animations.soldier.heavy_attack,
+                    AnimationType::KickAttack => &assets.all_character_animations.soldier.kick_attack,
                     AnimationType::Jumping => &assets.all_character_animations.soldier.jump,
                     AnimationType::Hurt => &assets.all_character_animations.soldier.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.soldier.block,

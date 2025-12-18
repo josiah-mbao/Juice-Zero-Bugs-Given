@@ -74,7 +74,9 @@
 | Move Right | `D` | `→` (Right Arrow) |
 | Jump | `W` | `↑` (Up Arrow) |
 | Block | `S` | `↓` (Down Arrow) |
-| Attack | `F` | `L` |
+| Light Attack | `F` | `L` |
+| Heavy Attack | `R` | `O` |
+| Kick | `T` | `P` |
 
 **In-Game Controls:**
 * **P** or **Click PAUSE button**: Pause game with menu options
