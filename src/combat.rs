@@ -10,6 +10,7 @@ use crate::GameAssets;
 pub struct FightTracker {
     pub fight_start_time: Option<f32>,
     pub current_combo: u32,
+    #[allow(dead_code)]
     pub boss: crate::game_state::BossType,
 }
 

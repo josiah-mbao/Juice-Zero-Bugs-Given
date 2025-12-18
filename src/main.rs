@@ -632,6 +632,7 @@ pub struct AttackInput {
 }
 
 // Animation Systems
+#[allow(clippy::type_complexity)]
 fn update_animation_state(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,

@@ -529,11 +529,11 @@ fn update_menu_display(
     for mut text in set.p0().iter_mut() {
         let boss_name_str = boss_name(config.boss);
         let is_unlocked = progress.is_boss_unlocked(config.boss);
-        let display_text = if is_unlocked {
-            format!("BOSS: {}", boss_name_str)
-        } else {
-            format!("BOSS: {} (LOCKED)", boss_name_str)
-        };
+            let display_text = if is_unlocked {
+                format!("BOSS: {boss_name_str}")
+            } else {
+                format!("BOSS: {boss_name_str} (LOCKED)")
+            };
         text.sections[0].value = display_text;
         text.sections[0].style.color = if is_unlocked {
             Color::WHITE

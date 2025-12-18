@@ -602,7 +602,7 @@ fn update_combo_counter(
     if combo_count > 0 {
         // Update or create combo counter
         if let Ok(mut text) = text_query.get_single_mut() {
-            text.sections[0].value = format!("COMBO: {}x", combo_count);
+            text.sections[0].value = format!("COMBO: {combo_count}x");
         } else {
             // Create combo counter if it doesn't exist
             commands
@@ -618,7 +618,7 @@ fn update_combo_counter(
                 .with_children(|parent| {
                     parent.spawn((
                         TextBundle::from_section(
-                            format!("COMBO: {}x", combo_count),
+                            format!("COMBO: {combo_count}x"),
                             TextStyle {
                                 font_size: 32.0,
                                 color: Color::srgb(1.0, 1.0, 0.0), // Yellow
@@ -699,6 +699,7 @@ fn update_damage_numbers(
 }
 
 // Cleanup all game UI elements when exiting InGame state
+#[allow(clippy::type_complexity)]
 fn cleanup_game_ui(
     mut commands: Commands,
     query: Query<

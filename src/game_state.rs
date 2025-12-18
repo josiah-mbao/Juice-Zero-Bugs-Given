@@ -72,7 +72,7 @@ pub struct Statistics {
     pub boss_stats: std::collections::HashMap<BossType, BossStatistics>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BossStatistics {
     pub wins: u32,
     pub losses: u32,
@@ -94,7 +94,7 @@ impl Default for Statistics {
         let mut boss_stats = std::collections::HashMap::new();
 
         // Initialize stats for all bosses
-        let all_bosses = vec![
+        let all_bosses = [
             BossType::NullPointer,
             BossType::UndefinedBehavior,
             BossType::DataRace,
@@ -116,16 +116,6 @@ impl Default for Statistics {
     }
 }
 
-impl Default for BossStatistics {
-    fn default() -> Self {
-        Self {
-            wins: 0,
-            losses: 0,
-            best_combo: 0,
-            fastest_victory_seconds: None,
-        }
-    }
-}
 
 impl PlayerProgress {
     pub fn is_boss_unlocked(&self, boss: BossType) -> bool {
@@ -186,7 +176,7 @@ impl PlayerProgress {
     }
 
     pub fn get_next_boss(&self, current: BossType) -> Option<BossType> {
-        let all_bosses = vec![
+        let all_bosses = [
             BossType::NullPointer,
             BossType::UndefinedBehavior,
             BossType::DataRace,
