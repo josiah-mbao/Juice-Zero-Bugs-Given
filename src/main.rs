@@ -9,7 +9,7 @@ pub struct GameAssets {
     pub boss_animations: BossAnimations,
     pub all_character_animations: AllCharacterAnimations,
     pub menu_background: Handle<Image>,
-    pub arena_background: Handle<Image>,
+    pub arena_backgrounds: ArenaBackgrounds,
     pub menu_music: Handle<AudioSource>,
     pub attack_sfx: Handle<AudioSource>,
     pub hit_sfx: Handle<AudioSource>,
@@ -17,6 +17,15 @@ pub struct GameAssets {
     pub block_sfx: Handle<AudioSource>,
     pub victory_music: Handle<AudioSource>,
     pub defeat_music: Handle<AudioSource>,
+}
+
+#[derive(Resource)]
+pub struct ArenaBackgrounds {
+    pub null_pointer: Handle<Image>,
+    pub undefined_behavior: Handle<Image>,
+    pub data_race: Handle<Image>,
+    pub use_after_free: Handle<Image>,
+    pub buffer_overflow: Handle<Image>,
 }
 
 #[derive(Resource)]
@@ -115,7 +124,7 @@ mod player;
 mod ui;
 
 use combat::CombatPlugin;
-use game_state::{AppState, GameConfig, Winner};
+use game_state::{AppState, GameConfig, PlayerProgress, Winner};
 use menu::MenuPlugin;
 use player::{
     AIState, AttackCooldown, BlockState, ControlType, FacingDirection, Grounded, Health, MoveSpeed,
@@ -144,31 +153,66 @@ fn main() {
         ))
         .init_state::<AppState>()
         .insert_resource(Winner::default())
-        .insert_resource(GameConfig::default())
+        .insert_resource(GameConfig::load_config())
+        .insert_resource(PlayerProgress::load_progress())
         .add_systems(Startup, (setup_camera, setup_assets))
-        .add_systems(OnEnter(AppState::InGame), (setup, stop_victory_defeat_music))
         .add_systems(
-            Update,
-            play_menu_music.run_if(in_state(AppState::MainMenu)),
+            OnEnter(AppState::InGame),
+            (cleanup_old_arenas, setup, stop_victory_defeat_music),
         )
-        .add_systems(OnExit(AppState::MainMenu), stop_menu_music)
         .add_systems(
             Update,
             (update_animation_state, animate_sprite).run_if(in_state(AppState::InGame)),
         )
+        .add_systems(Update, play_menu_music.run_if(in_state(AppState::MainMenu)))
+        .add_systems(OnExit(AppState::MainMenu), stop_menu_music)
+        .add_systems(Update, save_config_on_change)
         .add_systems(Update, restart_game.run_if(in_state(AppState::GameOver)))
         .run();
 }
 
-fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameAssets>) {
-    // Arena background - positioned behind everything
-    commands.spawn(SpriteBundle {
-        texture: assets.arena_background.clone(),
-        transform: Transform::from_xyz(0.0, 0.0, -10.0), // Behind all game elements
-        ..default()
-    });
+#[derive(Component)]
+struct ArenaBackground;
 
-    // Removed: commands.spawn(Camera2dBundle::default());
+fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameAssets>) {
+    // Clean up old arena backgrounds first
+    commands.spawn_empty().insert(CleanupArenaBackground);
+
+    // Get the correct arena background based on selected arena
+    let arena_texture = match game_config.arena {
+        game_state::ArenaType::Default => {
+            tracing::info!("SELECTED ARENA: Default - Loading null_pointer texture");
+            assets.arena_backgrounds.null_pointer.clone()
+        }
+        game_state::ArenaType::DataRace => {
+            tracing::info!("SELECTED ARENA: Data Race - Loading data_race texture");
+            assets.arena_backgrounds.data_race.clone()
+        }
+        game_state::ArenaType::UndefinedBehavior => {
+            tracing::info!(
+                "SELECTED ARENA: Undefined Behavior - Loading undefined_behavior texture"
+            );
+            assets.arena_backgrounds.undefined_behavior.clone()
+        }
+        game_state::ArenaType::BufferOverflow => {
+            tracing::info!("SELECTED ARENA: Buffer Overflow - Loading buffer_overflow texture");
+            assets.arena_backgrounds.buffer_overflow.clone()
+        }
+    };
+
+    // Arena background - positioned behind everything, zoomed out by 50%
+    commands.spawn((
+        SpriteBundle {
+            texture: arena_texture,
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(1200.0, 700.0)), // 50% smaller for zoom out effect
+                ..default()
+            },
+            transform: Transform::from_xyz(0.0, 0.0, -10.0), // Behind all game elements
+            ..default()
+        },
+        ArenaBackground,
+    ));
 
     // Invisible ground for the players to stand on (physics only, no visual)
     commands.spawn((
@@ -242,37 +286,39 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameA
     ));
 
     // Determine Player 2 sprite and control type
-    let (player2_initial_texture, player2_control, player2_health, player2_character_type) = if game_config.player2_is_human
-    {
-        (
-            assets.player_animations.idle[0].clone(), // Use player sprite for human P2
-            ControlType::Human,
-            Health {
-                current: 100,
-                max: 100,
-            },
-            CharacterType::Player, // Human P2 uses Player character
-        )
-    } else {
-        let health_mult = game_config.difficulty.health_multiplier();
-        let character_type = CharacterType::from_boss_type(game_config.boss);
-        let initial_texture = match character_type {
-            CharacterType::Player => assets.all_character_animations.player.idle[0].clone(),
-            CharacterType::Zombie => assets.all_character_animations.zombie.idle[0].clone(),
-            CharacterType::Adventurer => assets.all_character_animations.adventurer.idle[0].clone(),
-            CharacterType::Female => assets.all_character_animations.female.idle[0].clone(),
-            CharacterType::Soldier => assets.all_character_animations.soldier.idle[0].clone(),
+    let (player2_initial_texture, player2_control, player2_health, player2_character_type) =
+        if game_config.player2_is_human {
+            (
+                assets.player_animations.idle[0].clone(), // Use player sprite for human P2
+                ControlType::Human,
+                Health {
+                    current: 100,
+                    max: 100,
+                },
+                CharacterType::Player, // Human P2 uses Player character
+            )
+        } else {
+            let health_mult = game_config.difficulty.health_multiplier();
+            let character_type = CharacterType::from_boss_type(game_config.boss);
+            let initial_texture = match character_type {
+                CharacterType::Player => assets.all_character_animations.player.idle[0].clone(),
+                CharacterType::Zombie => assets.all_character_animations.zombie.idle[0].clone(),
+                CharacterType::Adventurer => {
+                    assets.all_character_animations.adventurer.idle[0].clone()
+                }
+                CharacterType::Female => assets.all_character_animations.female.idle[0].clone(),
+                CharacterType::Soldier => assets.all_character_animations.soldier.idle[0].clone(),
+            };
+            (
+                initial_texture, // Use character-specific sprite for AI
+                ControlType::AI(game_config.boss),
+                Health {
+                    current: (100.0 * health_mult) as i32,
+                    max: (100.0 * health_mult) as i32,
+                },
+                character_type,
+            )
         };
-        (
-            initial_texture, // Use character-specific sprite for AI
-            ControlType::AI(game_config.boss),
-            Health {
-                current: (100.0 * health_mult) as i32,
-                max: (100.0 * health_mult) as i32,
-            },
-            character_type,
-        )
-    };
 
     // -- Player 2 --
     let mut player2_entity = commands.spawn((
@@ -316,6 +362,26 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameA
     // Add AI state if it's AI
     if matches!(player2_control, ControlType::AI(_)) {
         player2_entity.insert(AIState::default());
+    }
+}
+
+#[derive(Component)]
+struct CleanupArenaBackground;
+
+fn cleanup_old_arenas(
+    mut commands: Commands,
+    query: Query<Entity, With<ArenaBackground>>,
+    cleanup_query: Query<Entity, With<CleanupArenaBackground>>,
+) {
+    // Remove cleanup marker
+    for entity in cleanup_query.iter() {
+        commands.entity(entity).despawn();
+    }
+
+    // Remove old arena backgrounds that might exist from previous sessions
+    // This ensures we don't have multiple arenas stacked on top of each other
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
     }
 }
 
@@ -529,12 +595,20 @@ fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
     };
 
+    let arena_backgrounds = ArenaBackgrounds {
+        null_pointer: asset_server.load("a-vibrant-2d-fighting-game-arena.png"), // Default arena
+        undefined_behavior: asset_server.load("undefined_behaviour_arena.png"),
+        data_race: asset_server.load("data_race_arena.png"),
+        use_after_free: asset_server.load("buffer_overflow_arena.png"), // Use buffer_overflow for use_after_free
+        buffer_overflow: asset_server.load("buffer_overflow_arena.png"), // This is correct
+    };
+
     let assets = GameAssets {
         player_animations,
         boss_animations,
         all_character_animations,
         menu_background: asset_server.load("home-screen.png"),
-        arena_background: asset_server.load("a-vibrant-2d-fighting-game-arena.png"),
+        arena_backgrounds,
         menu_music: asset_server.load("audio/menu_music.ogg"),
         // Sound effects - using OGG format for better Bevy compatibility
         attack_sfx: asset_server.load("audio/attack.ogg"),
@@ -573,42 +647,76 @@ fn update_animation_state(
         Option<&BlockState>,
     )>,
 ) {
-    for (mut animation_state, velocity, grounded, attack_cooldown, health, player, control_type, block_state) in
-        query.iter_mut()
+    for (
+        mut animation_state,
+        velocity,
+        grounded,
+        attack_cooldown,
+        health,
+        player,
+        control_type,
+        block_state,
+    ) in query.iter_mut()
     {
         // Check immediate input states for responsive animations
-        let (light_attack_pressed, heavy_attack_pressed, kick_attack_pressed, jump_pressed) = match control_type {
-            ControlType::Human => {
-                let (light_key, heavy_key, kick_key) = if player.id == 1 {
-                    (KeyCode::KeyF, KeyCode::KeyR, KeyCode::KeyT) // P1: F=Light, R=Heavy, T=Kick
-                } else {
-                    (KeyCode::KeyL, KeyCode::KeyO, KeyCode::KeyP) // P2: L=Light, O=Heavy, P=Kick
-                };
-                let jump_key = if player.id == 1 {
-                    KeyCode::KeyW
-                } else {
-                    KeyCode::ArrowUp
-                };
-                (
-                    keyboard_input.pressed(light_key) || (!attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::LightAttack)),
-                    keyboard_input.pressed(heavy_key) || (!attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::HeavyAttack)),
-                    keyboard_input.pressed(kick_key) || (!attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::KickAttack)),
-                    keyboard_input.pressed(jump_key),
-                )
-            }
-            ControlType::AI(_) => (
-                !attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::LightAttack),
-                !attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::HeavyAttack),
-                !attack_cooldown.timer.finished() && matches!(animation_state.current_animation, AnimationType::KickAttack),
-                false, // AI jumping is random, not input-based
-            ),
-        };
+        let (light_attack_pressed, heavy_attack_pressed, kick_attack_pressed, jump_pressed) =
+            match control_type {
+                ControlType::Human => {
+                    let (light_key, heavy_key, kick_key) = if player.id == 1 {
+                        (KeyCode::KeyF, KeyCode::KeyR, KeyCode::KeyT) // P1: F=Light, R=Heavy, T=Kick
+                    } else {
+                        (KeyCode::KeyL, KeyCode::KeyO, KeyCode::KeyP) // P2: L=Light, O=Heavy, P=Kick
+                    };
+                    let jump_key = if player.id == 1 {
+                        KeyCode::KeyW
+                    } else {
+                        KeyCode::ArrowUp
+                    };
+                    (
+                        keyboard_input.pressed(light_key)
+                            || (!attack_cooldown.timer.finished()
+                                && matches!(
+                                    animation_state.current_animation,
+                                    AnimationType::LightAttack
+                                )),
+                        keyboard_input.pressed(heavy_key)
+                            || (!attack_cooldown.timer.finished()
+                                && matches!(
+                                    animation_state.current_animation,
+                                    AnimationType::HeavyAttack
+                                )),
+                        keyboard_input.pressed(kick_key)
+                            || (!attack_cooldown.timer.finished()
+                                && matches!(
+                                    animation_state.current_animation,
+                                    AnimationType::KickAttack
+                                )),
+                        keyboard_input.pressed(jump_key),
+                    )
+                }
+                ControlType::AI(_) => (
+                    !attack_cooldown.timer.finished()
+                        && matches!(
+                            animation_state.current_animation,
+                            AnimationType::LightAttack
+                        ),
+                    !attack_cooldown.timer.finished()
+                        && matches!(
+                            animation_state.current_animation,
+                            AnimationType::HeavyAttack
+                        ),
+                    !attack_cooldown.timer.finished()
+                        && matches!(animation_state.current_animation, AnimationType::KickAttack),
+                    false, // AI jumping is random, not input-based
+                ),
+            };
 
         // Check for blocking
         let is_blocking = block_state.map(|bs| bs.is_blocking).unwrap_or(false);
 
         // Check for victory (human winner and this is a human player)
-        let is_victorious = winner.is_human_winner.unwrap_or(false) && matches!(control_type, ControlType::Human);
+        let is_victorious =
+            winner.is_human_winner.unwrap_or(false) && matches!(control_type, ControlType::Human);
 
         // Determine new animation based on state with higher priority for immediate actions
         let new_animation = if is_victorious {
@@ -659,9 +767,15 @@ fn animate_sprite(
                 CharacterType::Player => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.player.idle,
                     AnimationType::Walking => &assets.all_character_animations.player.walk,
-                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.player.light_attack,
-                    AnimationType::HeavyAttack => &assets.all_character_animations.player.heavy_attack,
-                    AnimationType::KickAttack => &assets.all_character_animations.player.kick_attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => {
+                        &assets.all_character_animations.player.light_attack
+                    }
+                    AnimationType::HeavyAttack => {
+                        &assets.all_character_animations.player.heavy_attack
+                    }
+                    AnimationType::KickAttack => {
+                        &assets.all_character_animations.player.kick_attack
+                    }
                     AnimationType::Jumping => &assets.all_character_animations.player.jump,
                     AnimationType::Hurt => &assets.all_character_animations.player.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.player.block,
@@ -672,9 +786,15 @@ fn animate_sprite(
                 CharacterType::Zombie => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.zombie.idle,
                     AnimationType::Walking => &assets.all_character_animations.zombie.walk,
-                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.zombie.light_attack,
-                    AnimationType::HeavyAttack => &assets.all_character_animations.zombie.heavy_attack,
-                    AnimationType::KickAttack => &assets.all_character_animations.zombie.kick_attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => {
+                        &assets.all_character_animations.zombie.light_attack
+                    }
+                    AnimationType::HeavyAttack => {
+                        &assets.all_character_animations.zombie.heavy_attack
+                    }
+                    AnimationType::KickAttack => {
+                        &assets.all_character_animations.zombie.kick_attack
+                    }
                     AnimationType::Jumping => &assets.all_character_animations.zombie.jump,
                     AnimationType::Hurt => &assets.all_character_animations.zombie.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.zombie.block,
@@ -685,22 +805,36 @@ fn animate_sprite(
                 CharacterType::Adventurer => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.adventurer.idle,
                     AnimationType::Walking => &assets.all_character_animations.adventurer.walk,
-                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.adventurer.light_attack,
-                    AnimationType::HeavyAttack => &assets.all_character_animations.adventurer.heavy_attack,
-                    AnimationType::KickAttack => &assets.all_character_animations.adventurer.kick_attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => {
+                        &assets.all_character_animations.adventurer.light_attack
+                    }
+                    AnimationType::HeavyAttack => {
+                        &assets.all_character_animations.adventurer.heavy_attack
+                    }
+                    AnimationType::KickAttack => {
+                        &assets.all_character_animations.adventurer.kick_attack
+                    }
                     AnimationType::Jumping => &assets.all_character_animations.adventurer.jump,
                     AnimationType::Hurt => &assets.all_character_animations.adventurer.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.adventurer.block,
                     AnimationType::Victory => &assets.all_character_animations.adventurer.victory,
                     AnimationType::Falling => &assets.all_character_animations.adventurer.fall,
-                    AnimationType::SpecialAttack => &assets.all_character_animations.adventurer.special,
+                    AnimationType::SpecialAttack => {
+                        &assets.all_character_animations.adventurer.special
+                    }
                 },
                 CharacterType::Female => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.female.idle,
                     AnimationType::Walking => &assets.all_character_animations.female.walk,
-                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.female.light_attack,
-                    AnimationType::HeavyAttack => &assets.all_character_animations.female.heavy_attack,
-                    AnimationType::KickAttack => &assets.all_character_animations.female.kick_attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => {
+                        &assets.all_character_animations.female.light_attack
+                    }
+                    AnimationType::HeavyAttack => {
+                        &assets.all_character_animations.female.heavy_attack
+                    }
+                    AnimationType::KickAttack => {
+                        &assets.all_character_animations.female.kick_attack
+                    }
                     AnimationType::Jumping => &assets.all_character_animations.female.jump,
                     AnimationType::Hurt => &assets.all_character_animations.female.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.female.block,
@@ -711,15 +845,23 @@ fn animate_sprite(
                 CharacterType::Soldier => match animation_state.current_animation {
                     AnimationType::Idle => &assets.all_character_animations.soldier.idle,
                     AnimationType::Walking => &assets.all_character_animations.soldier.walk,
-                    AnimationType::Attacking | AnimationType::LightAttack => &assets.all_character_animations.soldier.light_attack,
-                    AnimationType::HeavyAttack => &assets.all_character_animations.soldier.heavy_attack,
-                    AnimationType::KickAttack => &assets.all_character_animations.soldier.kick_attack,
+                    AnimationType::Attacking | AnimationType::LightAttack => {
+                        &assets.all_character_animations.soldier.light_attack
+                    }
+                    AnimationType::HeavyAttack => {
+                        &assets.all_character_animations.soldier.heavy_attack
+                    }
+                    AnimationType::KickAttack => {
+                        &assets.all_character_animations.soldier.kick_attack
+                    }
                     AnimationType::Jumping => &assets.all_character_animations.soldier.jump,
                     AnimationType::Hurt => &assets.all_character_animations.soldier.hurt,
                     AnimationType::Blocking => &assets.all_character_animations.soldier.block,
                     AnimationType::Victory => &assets.all_character_animations.soldier.victory,
                     AnimationType::Falling => &assets.all_character_animations.soldier.fall,
-                    AnimationType::SpecialAttack => &assets.all_character_animations.soldier.special,
+                    AnimationType::SpecialAttack => {
+                        &assets.all_character_animations.soldier.special
+                    }
                 },
             };
 
@@ -779,8 +921,18 @@ fn stop_menu_music(mut commands: Commands, query: Query<Entity, With<MenuMusic>>
 #[derive(Component)]
 pub struct VictoryDefeatMusic;
 
-fn stop_victory_defeat_music(mut commands: Commands, query: Query<Entity, With<VictoryDefeatMusic>>) {
+fn stop_victory_defeat_music(
+    mut commands: Commands,
+    query: Query<Entity, With<VictoryDefeatMusic>>,
+) {
     for entity in query.iter() {
         commands.entity(entity).despawn();
+    }
+}
+
+fn save_config_on_change(config: Res<GameConfig>) {
+    // Only save if the config has changed
+    if config.is_changed() {
+        GameConfig::save_config(config.as_ref());
     }
 }

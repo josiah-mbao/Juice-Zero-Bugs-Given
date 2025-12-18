@@ -2,9 +2,16 @@ use bevy::prelude::*;
 use bevy_xpbd_2d::prelude::*;
 use std::time::Duration;
 
-use crate::game_state::{AppState, GameConfig, Winner};
+use crate::game_state::{AppState, GameConfig, PlayerProgress, Winner};
 use crate::player::{BlockState, ControlType, FacingDirection, Health, Player};
 use crate::GameAssets;
+
+#[derive(Resource)]
+pub struct FightTracker {
+    pub fight_start_time: Option<f32>,
+    pub current_combo: u32,
+    pub boss: crate::game_state::BossType,
+}
 
 pub struct CombatPlugin;
 
@@ -12,6 +19,7 @@ impl Plugin for CombatPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnHitboxEvent>()
             .add_event::<DamageEvent>()
+            .add_systems(OnEnter(AppState::InGame), initialize_fight_tracker)
             .add_systems(
                 Update,
                 (
@@ -24,6 +32,7 @@ impl Plugin for CombatPlugin {
                     spawn_particles_on_hit.after(apply_damage),
                     despawn_particles_after_duration.after(spawn_particles_on_hit),
                     check_for_game_over.after(apply_damage),
+                    update_combo_tracker.after(apply_damage),
                 )
                     .run_if(in_state(AppState::InGame)),
             );
@@ -87,8 +96,8 @@ fn spawn_hitbox(
                             FacingDirection::Right => Vec2::new(55.0, 0.0),
                             FacingDirection::Left => Vec2::new(-55.0, 0.0),
                         },
-                        Vec2::new(60.0, 35.0), // Smaller hitbox
-                        3,                      // Lower damage
+                        Vec2::new(60.0, 35.0),      // Smaller hitbox
+                        3,                          // Lower damage
                         Duration::from_millis(120), // Shorter duration
                     ),
                     crate::player::AttackType::Heavy => (
@@ -96,8 +105,8 @@ fn spawn_hitbox(
                             FacingDirection::Right => Vec2::new(70.0, 0.0),
                             FacingDirection::Left => Vec2::new(-70.0, 0.0),
                         },
-                        Vec2::new(80.0, 45.0), // Larger hitbox
-                        8,                      // Higher damage
+                        Vec2::new(80.0, 45.0),      // Larger hitbox
+                        8,                          // Higher damage
                         Duration::from_millis(200), // Longer duration
                     ),
                     crate::player::AttackType::Kick => (
@@ -105,8 +114,8 @@ fn spawn_hitbox(
                             FacingDirection::Right => Vec2::new(65.0, -10.0), // Slightly lower for kick
                             FacingDirection::Left => Vec2::new(-65.0, -10.0),
                         },
-                        Vec2::new(70.0, 40.0), // Medium hitbox
-                        5,                      // Medium damage
+                        Vec2::new(70.0, 40.0),      // Medium hitbox
+                        5,                          // Medium damage
                         Duration::from_millis(160), // Medium duration
                     ),
                 };
@@ -318,6 +327,9 @@ fn check_for_game_over(
     query: Query<(&Health, &Player, &ControlType)>,
     mut winner: ResMut<Winner>,
     config: Res<GameConfig>,
+    mut progress: ResMut<PlayerProgress>,
+    fight_tracker: Res<FightTracker>,
+    time: Res<Time>,
 ) {
     let mut players_alive = Vec::new();
     let mut players_dead = Vec::new();
@@ -334,12 +346,40 @@ fn check_for_game_over(
         let (winner_id, winner_control) = players_alive[0];
         winner.player_id = Some(winner_id);
         winner.is_human_winner = Some(matches!(winner_control, ControlType::Human));
+
+        // Record victory/defeat statistics
+        let fight_duration = if let Some(start_time) = fight_tracker.fight_start_time {
+            time.elapsed_seconds() - start_time
+        } else {
+            0.0
+        };
+
+        if matches!(winner_control, ControlType::Human) && !config.player2_is_human {
+            // Human victory
+            progress.record_victory(config.boss, fight_duration, fight_tracker.current_combo);
+
+            // Unlock next boss if human player won against AI
+            if let Some(next_boss) = progress.get_next_boss(config.boss) {
+                progress.unlock_boss(next_boss);
+                tracing::info!("New boss unlocked: {:?}", next_boss);
+            } else {
+                tracing::info!("All bosses defeated! Game completed.");
+            }
+        } else {
+            // AI victory or human vs human
+            progress.record_defeat(config.boss);
+        }
+
         tracing::info!("Player {} wins! Game Over.", winner_id);
         next_state.set(AppState::GameOver);
     } else if players_alive.is_empty() && !config.player2_is_human {
         // Both died, but only if vs AI (since human vs human doesn't make sense for draw)
         winner.player_id = None;
         winner.is_human_winner = None;
+
+        // Record defeat for both (since it's a draw)
+        progress.record_defeat(config.boss);
+
         tracing::info!("Both players died! Draw.");
         next_state.set(AppState::GameOver);
     }
@@ -385,5 +425,47 @@ fn play_hit_sound(
                 settings: PlaybackSettings::DESPAWN,
             });
         }
+    }
+}
+
+fn initialize_fight_tracker(
+    mut commands: Commands,
+    config: Res<GameConfig>,
+    mut progress: ResMut<PlayerProgress>,
+    time: Res<Time>,
+) {
+    // Record fight start
+    progress.record_fight_start(config.boss);
+
+    commands.insert_resource(FightTracker {
+        fight_start_time: Some(time.elapsed_seconds()),
+        current_combo: 0,
+        boss: config.boss,
+    });
+}
+
+fn update_combo_tracker(
+    mut fight_tracker: ResMut<FightTracker>,
+    mut damage_events: EventReader<DamageEvent>,
+    block_query: Query<&BlockState>,
+    _time: Res<Time>,
+) {
+    let mut hits_this_frame = 0;
+
+    // Count successful hits (not blocked)
+    for event in damage_events.read() {
+        let is_blocking = block_query
+            .get(event.target)
+            .map(|block_state| block_state.is_blocking)
+            .unwrap_or(false);
+
+        if !is_blocking {
+            hits_this_frame += 1;
+        }
+    }
+
+    if hits_this_frame > 0 {
+        fight_tracker.current_combo += hits_this_frame;
+        tracing::info!("Combo: {}x", fight_tracker.current_combo);
     }
 }

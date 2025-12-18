@@ -1,0 +1,6 @@
+{
+  "arena": "BufferOverflow",
+  "boss": "UndefinedBehavior",
+  "difficulty": "Normal",
+  "player2_is_human": false
+}

@@ -29,7 +29,10 @@ impl Plugin for UiPlugin {
             )
             .add_systems(OnExit(AppState::Paused), (cleanup_pause_screen,))
             .add_systems(OnEnter(AppState::MainMenu), reset_winner_on_menu)
-            .add_systems(OnExit(AppState::InGame), (cleanup_pause_button, cleanup_game_ui))
+            .add_systems(
+                OnExit(AppState::InGame),
+                (cleanup_pause_button, cleanup_game_ui),
+            )
             .add_systems(OnEnter(AppState::GameOver), setup_game_over_screen)
             .add_systems(OnExit(AppState::GameOver), cleanup_game_over_screen);
     }
@@ -314,7 +317,9 @@ fn setup_game_over_screen(
     assets: Res<GameAssets>,
 ) {
     let (winner_text, text_color) = match (winner.player_id, winner.is_human_winner) {
-        (Some(1), Some(true)) | (Some(2), Some(true)) => ("BUG FIXED!".to_string(), Color::srgb(0.0, 1.0, 0.0)), // Green for victory
+        (Some(1), Some(true)) | (Some(2), Some(true)) => {
+            ("BUG FIXED!".to_string(), Color::srgb(0.0, 1.0, 0.0))
+        } // Green for victory
         (Some(_), Some(false)) => ("SEGFAULT".to_string(), Color::srgb(1.0, 0.0, 0.0)), // Red for defeat
         _ => ("DRAW!".to_string(), Color::WHITE),
     };
@@ -694,7 +699,19 @@ fn update_damage_numbers(
 }
 
 // Cleanup all game UI elements when exiting InGame state
-fn cleanup_game_ui(mut commands: Commands, query: Query<Entity, Or<(With<HealthBar>, With<HealthBarContainer>, With<BossDisplay>, With<ComboCounter>, With<DamageNumber>)>>) {
+fn cleanup_game_ui(
+    mut commands: Commands,
+    query: Query<
+        Entity,
+        Or<(
+            With<HealthBar>,
+            With<HealthBarContainer>,
+            With<BossDisplay>,
+            With<ComboCounter>,
+            With<DamageNumber>,
+        )>,
+    >,
+) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
