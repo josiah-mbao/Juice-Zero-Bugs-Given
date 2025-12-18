@@ -7,6 +7,7 @@ use std::time::Duration;
 pub struct GameAssets {
     pub player_animations: PlayerAnimations,
     pub boss_animations: BossAnimations,
+    pub all_character_animations: AllCharacterAnimations,
     pub menu_background: Handle<Image>,
     pub arena_background: Handle<Image>,
     pub menu_music: Handle<AudioSource>,
@@ -14,6 +15,21 @@ pub struct GameAssets {
     pub hit_sfx: Handle<AudioSource>,
     pub jump_sfx: Handle<AudioSource>,
     pub block_sfx: Handle<AudioSource>,
+    pub victory_music: Handle<AudioSource>,
+    pub defeat_music: Handle<AudioSource>,
+}
+
+#[derive(Resource)]
+pub struct CharacterAnimations {
+    pub idle: Vec<Handle<Image>>,
+    pub walk: Vec<Handle<Image>>,
+    pub attack: Vec<Handle<Image>>,
+    pub jump: Vec<Handle<Image>>,
+    pub hurt: Vec<Handle<Image>>,
+    pub block: Vec<Handle<Image>>,
+    pub victory: Vec<Handle<Image>>,
+    pub fall: Vec<Handle<Image>>,
+    pub special: Vec<Handle<Image>>,
 }
 
 #[derive(Resource)]
@@ -32,6 +48,15 @@ pub struct BossAnimations {
     pub hurt: Vec<Handle<Image>>,
 }
 
+#[derive(Resource)]
+pub struct AllCharacterAnimations {
+    pub player: CharacterAnimations,
+    pub zombie: CharacterAnimations,
+    pub adventurer: CharacterAnimations,
+    pub female: CharacterAnimations,
+    pub soldier: CharacterAnimations,
+}
+
 // Animation Components
 #[derive(Component)]
 pub struct AnimationState {
@@ -39,6 +64,7 @@ pub struct AnimationState {
     pub current_frame: usize,
     pub timer: Timer,
     pub frame_duration: f32,
+    pub character_type: CharacterType,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -48,6 +74,31 @@ pub enum AnimationType {
     Attacking,
     Jumping,
     Hurt,
+    Blocking,
+    Victory,
+    Falling,
+    SpecialAttack,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum CharacterType {
+    Player,
+    Zombie,
+    Adventurer,
+    Female,
+    Soldier,
+}
+
+impl CharacterType {
+    pub fn from_boss_type(boss_type: game_state::BossType) -> Self {
+        match boss_type {
+            game_state::BossType::NullPointer => CharacterType::Zombie,
+            game_state::BossType::UndefinedBehavior => CharacterType::Adventurer,
+            game_state::BossType::DataRace => CharacterType::Female,
+            game_state::BossType::UseAfterFree => CharacterType::Soldier,
+            game_state::BossType::BufferOverflow => CharacterType::Player, // Use player as alternate boss
+        }
+    }
 }
 
 // Import our modules
@@ -89,7 +140,7 @@ fn main() {
         .insert_resource(Winner::default())
         .insert_resource(GameConfig::default())
         .add_systems(Startup, (setup_camera, setup_assets))
-        .add_systems(OnEnter(AppState::InGame), setup) // <-- Add this line
+        .add_systems(OnEnter(AppState::InGame), (setup, stop_victory_defeat_music))
         .add_systems(
             Update,
             play_menu_music.run_if(in_state(AppState::MainMenu)),
@@ -158,6 +209,7 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameA
             current_frame: 0,
             timer: Timer::new(Duration::from_secs_f32(0.15), TimerMode::Repeating),
             frame_duration: 0.15,
+            character_type: CharacterType::Player, // Human player always uses Player character
         },
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
@@ -184,7 +236,7 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameA
     ));
 
     // Determine Player 2 sprite and control type
-    let (player2_initial_texture, player2_control, player2_health) = if game_config.player2_is_human
+    let (player2_initial_texture, player2_control, player2_health, player2_character_type) = if game_config.player2_is_human
     {
         (
             assets.player_animations.idle[0].clone(), // Use player sprite for human P2
@@ -193,16 +245,26 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameA
                 current: 100,
                 max: 100,
             },
+            CharacterType::Player, // Human P2 uses Player character
         )
     } else {
         let health_mult = game_config.difficulty.health_multiplier();
+        let character_type = CharacterType::from_boss_type(game_config.boss);
+        let initial_texture = match character_type {
+            CharacterType::Player => assets.all_character_animations.player.idle[0].clone(),
+            CharacterType::Zombie => assets.all_character_animations.zombie.idle[0].clone(),
+            CharacterType::Adventurer => assets.all_character_animations.adventurer.idle[0].clone(),
+            CharacterType::Female => assets.all_character_animations.female.idle[0].clone(),
+            CharacterType::Soldier => assets.all_character_animations.soldier.idle[0].clone(),
+        };
         (
-            assets.boss_animations.idle[0].clone(), // Use boss sprite for AI
+            initial_texture, // Use character-specific sprite for AI
             ControlType::AI(game_config.boss),
             Health {
                 current: (100.0 * health_mult) as i32,
                 max: (100.0 * health_mult) as i32,
             },
+            character_type,
         )
     };
 
@@ -222,6 +284,7 @@ fn setup(mut commands: Commands, game_config: Res<GameConfig>, assets: Res<GameA
             current_frame: 0,
             timer: Timer::new(Duration::from_secs_f32(0.15), TimerMode::Repeating),
             frame_duration: 0.15,
+            character_type: player2_character_type,
         },
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
@@ -321,9 +384,119 @@ fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
             .load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_back.png")],
     };
 
+    // Load all character animations
+    let all_character_animations = AllCharacterAnimations {
+        player: CharacterAnimations {
+            idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_idle.png")],
+            walk: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_walk1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_walk2.png"),
+            ],
+            attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_kick.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_action2.png"),
+            ],
+            jump: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_jump.png")],
+            hurt: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_hurt.png")],
+            block: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_back.png")],
+            victory: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_cheer1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_cheer2.png"),
+            ],
+            fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_fall.png")],
+            special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Player/Poses/player_kick.png")],
+        },
+        zombie: CharacterAnimations {
+            idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_idle.png")],
+            walk: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_walk1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_walk2.png"),
+            ],
+            attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_kick.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_action2.png"),
+            ],
+            jump: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_jump.png")],
+            hurt: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_hurt.png")],
+            block: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_back.png")],
+            victory: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_cheer1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_cheer2.png"),
+            ],
+            fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_fall.png")],
+            special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Zombie/Poses/zombie_kick.png")],
+        },
+        adventurer: CharacterAnimations {
+            idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_idle.png")],
+            walk: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_walk1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_walk2.png"),
+            ],
+            attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_kick.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_action2.png"),
+            ],
+            jump: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_jump.png")],
+            hurt: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_hurt.png")],
+            block: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_back.png")],
+            victory: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_cheer1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_cheer2.png"),
+            ],
+            fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_fall.png")],
+            special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Adventurer/Poses/adventurer_kick.png")],
+        },
+        female: CharacterAnimations {
+            idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_idle.png")],
+            walk: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_walk1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_walk2.png"),
+            ],
+            attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_kick.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_action2.png"),
+            ],
+            jump: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_jump.png")],
+            hurt: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_hurt.png")],
+            block: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_back.png")],
+            victory: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_cheer1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_cheer2.png"),
+            ],
+            fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_fall.png")],
+            special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Female/Poses/female_kick.png")],
+        },
+        soldier: CharacterAnimations {
+            idle: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_idle.png")],
+            walk: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_walk1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_walk2.png"),
+            ],
+            attack: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_kick.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_action1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_action2.png"),
+            ],
+            jump: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_jump.png")],
+            hurt: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_hurt.png")],
+            block: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_back.png")],
+            victory: vec![
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_cheer1.png"),
+                asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_cheer2.png"),
+            ],
+            fall: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_fall.png")],
+            special: vec![asset_server.load("sprites/kenney_platformer-characters/PNG/Soldier/Poses/soldier_kick.png")],
+        },
+    };
+
     let assets = GameAssets {
         player_animations,
         boss_animations,
+        all_character_animations,
         menu_background: asset_server.load("home-screen.png"),
         arena_background: asset_server.load("a-vibrant-2d-fighting-game-arena.png"),
         menu_music: asset_server.load("audio/menu_music.ogg"),
@@ -332,6 +505,8 @@ fn setup_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
         hit_sfx: asset_server.load("audio/hit.ogg"),
         jump_sfx: asset_server.load("audio/jump.ogg"),
         block_sfx: asset_server.load("audio/hit.ogg"), // Reuse hit sound for blocks
+        victory_music: asset_server.load("audio/victory_sting.ogg"),
+        defeat_music: asset_server.load("audio/game_over.ogg"),
     };
 
     commands.insert_resource(assets);
@@ -350,6 +525,7 @@ pub struct AttackInput {
 fn update_animation_state(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    winner: Res<crate::game_state::Winner>,
     mut query: Query<(
         &mut AnimationState,
         &LinearVelocity,
@@ -358,9 +534,10 @@ fn update_animation_state(
         &Health,
         &Player,
         &ControlType,
+        Option<&BlockState>,
     )>,
 ) {
-    for (mut animation_state, velocity, grounded, attack_cooldown, health, player, control_type) in
+    for (mut animation_state, velocity, grounded, attack_cooldown, health, player, control_type, block_state) in
         query.iter_mut()
     {
         // Check immediate input states for responsive animations
@@ -387,8 +564,18 @@ fn update_animation_state(
             ),
         };
 
+        // Check for blocking
+        let is_blocking = block_state.map(|bs| bs.is_blocking).unwrap_or(false);
+
+        // Check for victory (human winner and this is a human player)
+        let is_victorious = winner.is_human_winner.unwrap_or(false) && matches!(control_type, ControlType::Human);
+
         // Determine new animation based on state with higher priority for immediate actions
-        let new_animation = if attack_pressed {
+        let new_animation = if is_victorious {
+            AnimationType::Victory
+        } else if is_blocking {
+            AnimationType::Blocking
+        } else if attack_pressed {
             AnimationType::Attacking
         } else if jump_pressed || !grounded.0 {
             AnimationType::Jumping
@@ -415,29 +602,70 @@ fn update_animation_state(
 
 fn animate_sprite(
     assets: Res<GameAssets>,
-    mut query: Query<(&mut Handle<Image>, &mut AnimationState, &ControlType)>,
+    mut query: Query<(&mut Handle<Image>, &mut AnimationState)>,
 ) {
-    for (mut texture, mut animation_state, control_type) in query.iter_mut() {
+    for (mut texture, mut animation_state) in query.iter_mut() {
         // Check if it's time to advance frame
         if animation_state.timer.finished() {
             // Store frame duration before borrowing animation_state mutably
             let frame_duration = animation_state.frame_duration;
 
-            // Get the animation frames based on type
-            let frames = match control_type {
-                ControlType::Human => match animation_state.current_animation {
-                    AnimationType::Idle => &assets.player_animations.idle,
-                    AnimationType::Walking => &assets.player_animations.walk,
-                    AnimationType::Attacking => &assets.player_animations.attack,
-                    AnimationType::Jumping => &assets.player_animations.jump,
-                    AnimationType::Hurt => &assets.player_animations.hurt,
+            // Get the animation frames based on character type and animation type
+            let frames = match animation_state.character_type {
+                CharacterType::Player => match animation_state.current_animation {
+                    AnimationType::Idle => &assets.all_character_animations.player.idle,
+                    AnimationType::Walking => &assets.all_character_animations.player.walk,
+                    AnimationType::Attacking => &assets.all_character_animations.player.attack,
+                    AnimationType::Jumping => &assets.all_character_animations.player.jump,
+                    AnimationType::Hurt => &assets.all_character_animations.player.hurt,
+                    AnimationType::Blocking => &assets.all_character_animations.player.block,
+                    AnimationType::Victory => &assets.all_character_animations.player.victory,
+                    AnimationType::Falling => &assets.all_character_animations.player.fall,
+                    AnimationType::SpecialAttack => &assets.all_character_animations.player.special,
                 },
-                ControlType::AI(_) => match animation_state.current_animation {
-                    AnimationType::Idle => &assets.boss_animations.idle,
-                    AnimationType::Walking => &assets.boss_animations.idle, // Boss doesn't have walk anim
-                    AnimationType::Attacking => &assets.boss_animations.attack,
-                    AnimationType::Jumping => &assets.boss_animations.idle, // Boss doesn't have jump anim
-                    AnimationType::Hurt => &assets.boss_animations.hurt,
+                CharacterType::Zombie => match animation_state.current_animation {
+                    AnimationType::Idle => &assets.all_character_animations.zombie.idle,
+                    AnimationType::Walking => &assets.all_character_animations.zombie.walk,
+                    AnimationType::Attacking => &assets.all_character_animations.zombie.attack,
+                    AnimationType::Jumping => &assets.all_character_animations.zombie.jump,
+                    AnimationType::Hurt => &assets.all_character_animations.zombie.hurt,
+                    AnimationType::Blocking => &assets.all_character_animations.zombie.block,
+                    AnimationType::Victory => &assets.all_character_animations.zombie.victory,
+                    AnimationType::Falling => &assets.all_character_animations.zombie.fall,
+                    AnimationType::SpecialAttack => &assets.all_character_animations.zombie.special,
+                },
+                CharacterType::Adventurer => match animation_state.current_animation {
+                    AnimationType::Idle => &assets.all_character_animations.adventurer.idle,
+                    AnimationType::Walking => &assets.all_character_animations.adventurer.walk,
+                    AnimationType::Attacking => &assets.all_character_animations.adventurer.attack,
+                    AnimationType::Jumping => &assets.all_character_animations.adventurer.jump,
+                    AnimationType::Hurt => &assets.all_character_animations.adventurer.hurt,
+                    AnimationType::Blocking => &assets.all_character_animations.adventurer.block,
+                    AnimationType::Victory => &assets.all_character_animations.adventurer.victory,
+                    AnimationType::Falling => &assets.all_character_animations.adventurer.fall,
+                    AnimationType::SpecialAttack => &assets.all_character_animations.adventurer.special,
+                },
+                CharacterType::Female => match animation_state.current_animation {
+                    AnimationType::Idle => &assets.all_character_animations.female.idle,
+                    AnimationType::Walking => &assets.all_character_animations.female.walk,
+                    AnimationType::Attacking => &assets.all_character_animations.female.attack,
+                    AnimationType::Jumping => &assets.all_character_animations.female.jump,
+                    AnimationType::Hurt => &assets.all_character_animations.female.hurt,
+                    AnimationType::Blocking => &assets.all_character_animations.female.block,
+                    AnimationType::Victory => &assets.all_character_animations.female.victory,
+                    AnimationType::Falling => &assets.all_character_animations.female.fall,
+                    AnimationType::SpecialAttack => &assets.all_character_animations.female.special,
+                },
+                CharacterType::Soldier => match animation_state.current_animation {
+                    AnimationType::Idle => &assets.all_character_animations.soldier.idle,
+                    AnimationType::Walking => &assets.all_character_animations.soldier.walk,
+                    AnimationType::Attacking => &assets.all_character_animations.soldier.attack,
+                    AnimationType::Jumping => &assets.all_character_animations.soldier.jump,
+                    AnimationType::Hurt => &assets.all_character_animations.soldier.hurt,
+                    AnimationType::Blocking => &assets.all_character_animations.soldier.block,
+                    AnimationType::Victory => &assets.all_character_animations.soldier.victory,
+                    AnimationType::Falling => &assets.all_character_animations.soldier.fall,
+                    AnimationType::SpecialAttack => &assets.all_character_animations.soldier.special,
                 },
             };
 
@@ -488,6 +716,16 @@ fn play_menu_music(
 }
 
 fn stop_menu_music(mut commands: Commands, query: Query<Entity, With<MenuMusic>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
+// Victory/Defeat Music Systems
+#[derive(Component)]
+pub struct VictoryDefeatMusic;
+
+fn stop_victory_defeat_music(mut commands: Commands, query: Query<Entity, With<VictoryDefeatMusic>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }

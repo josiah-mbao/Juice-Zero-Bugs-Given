@@ -4,6 +4,7 @@ use std::time::Duration;
 use crate::game_state::{AppState, BossType, GameConfig, Winner};
 use crate::menu::BossDisplay;
 use crate::player::{ControlType, Health, Player};
+use crate::{GameAssets, VictoryDefeatMusic};
 
 pub struct UiPlugin;
 
@@ -309,12 +310,13 @@ fn update_health_bars(
 fn setup_game_over_screen(
     mut commands: Commands,
     winner: Res<Winner>,
-    game_config: Res<GameConfig>,
+    _game_config: Res<GameConfig>,
+    assets: Res<GameAssets>,
 ) {
     let winner_text = match (winner.player_id, winner.is_human_winner) {
-        (Some(1), Some(true)) => "PLAYER 1 WINS!".to_string(),
-        (Some(2), Some(true)) => "PLAYER 2 WINS!".to_string(),
-        (Some(_), Some(false)) => format!("{} WINS!", boss_name(game_config.boss).to_uppercase()),
+        (Some(1), Some(true)) => "BUG FIXED".to_string(),
+        (Some(2), Some(true)) => "BUG FIXED".to_string(),
+        (Some(_), Some(false)) => "SEGFAULT".to_string(),
         _ => "DRAW!".to_string(),
     };
 
@@ -362,6 +364,21 @@ fn setup_game_over_screen(
                 },
             ));
         });
+
+    // Play victory or defeat music
+    let music_source = match (winner.player_id, winner.is_human_winner) {
+        (Some(1), Some(true)) | (Some(2), Some(true)) => assets.victory_music.clone(),
+        (Some(_), Some(false)) => assets.defeat_music.clone(),
+        _ => assets.victory_music.clone(), // Default to victory for draw
+    };
+
+    commands.spawn((
+        AudioBundle {
+            source: music_source,
+            settings: PlaybackSettings::DESPAWN, // One-time sting, auto-despawn when finished
+        },
+        VictoryDefeatMusic,
+    ));
 }
 
 fn cleanup_game_over_screen(mut commands: Commands, query: Query<Entity, With<GameOverScreen>>) {
