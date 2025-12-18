@@ -313,11 +313,10 @@ fn setup_game_over_screen(
     _game_config: Res<GameConfig>,
     assets: Res<GameAssets>,
 ) {
-    let winner_text = match (winner.player_id, winner.is_human_winner) {
-        (Some(1), Some(true)) => "BUG FIXED".to_string(),
-        (Some(2), Some(true)) => "BUG FIXED".to_string(),
-        (Some(_), Some(false)) => "SEGFAULT".to_string(),
-        _ => "DRAW!".to_string(),
+    let (winner_text, text_color) = match (winner.player_id, winner.is_human_winner) {
+        (Some(1), Some(true)) | (Some(2), Some(true)) => ("BUG FIXED!".to_string(), Color::srgb(0.0, 1.0, 0.0)), // Green for victory
+        (Some(_), Some(false)) => ("SEGFAULT".to_string(), Color::srgb(1.0, 0.0, 0.0)), // Red for defeat
+        _ => ("DRAW!".to_string(), Color::WHITE),
     };
 
     commands
@@ -343,7 +342,7 @@ fn setup_game_over_screen(
                 &winner_text,
                 TextStyle {
                     font_size: 80.0,
-                    color: Color::WHITE,
+                    color: text_color,
                     ..default()
                 },
             ));
