@@ -116,7 +116,6 @@ impl Default for Statistics {
     }
 }
 
-
 impl PlayerProgress {
     pub fn is_boss_unlocked(&self, boss: BossType) -> bool {
         self.unlocked_bosses.contains(&boss)
