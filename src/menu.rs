@@ -156,6 +156,7 @@ enum MenuAction {
     PrevDifficulty,
     TogglePlayer2,
     ShowStatistics,
+    ShowCredits,
     NextArena,
     PrevArena,
 }
@@ -362,6 +363,9 @@ fn setup_main_menu(mut commands: Commands) {
                     // Statistics Button
                     spawn_menu_button(parent, "STATISTICS", MenuAction::ShowStatistics);
 
+                    // Credits Button
+                    spawn_menu_button(parent, "CREDITS", MenuAction::ShowCredits);
+
                     // Quit Button
                     spawn_menu_button(parent, "QUIT", MenuAction::Quit);
                 });
@@ -445,6 +449,9 @@ fn main_menu_interaction(
                 }
                 MenuAction::ShowStatistics => {
                     app_state.set(AppState::Statistics);
+                }
+                MenuAction::ShowCredits => {
+                    app_state.set(AppState::Credits);
                 }
                 MenuAction::NextArena => {
                     config.arena = next_arena(config.arena);

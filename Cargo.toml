@@ -22,8 +22,9 @@ serde_json = "1.0"
 # Audio support
 # bevy_kira_audio = "0.22"  # Optional: Can be removed if not using
 
-# The following is recommended for faster compilation in debug builds
+# Use dynamic linking for releases (easier distribution with proper bundling)
 [features]
-default = [
-    "bevy/dynamic_linking",
-]
+default = ["bevy/dynamic_linking"]
+
+# Optional static linking for specific use cases
+static = []

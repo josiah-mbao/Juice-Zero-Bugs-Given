@@ -10,6 +10,7 @@ pub enum AppState {
     #[allow(dead_code)]
     Paused,
     Statistics,
+    Credits,
 }
 
 // Resource to track the winner
@@ -44,6 +45,12 @@ pub enum BossType {
     DataRace,
     UseAfterFree,
     BufferOverflow,
+}
+
+impl BossType {
+    pub fn is_final_boss(&self) -> bool {
+        matches!(self, BossType::BufferOverflow)
+    }
 }
 
 #[derive(Resource, Default)]

@@ -34,7 +34,13 @@ impl Plugin for UiPlugin {
                 (cleanup_pause_button, cleanup_game_ui),
             )
             .add_systems(OnEnter(AppState::GameOver), setup_game_over_screen)
-            .add_systems(OnExit(AppState::GameOver), cleanup_game_over_screen);
+            .add_systems(OnExit(AppState::GameOver), cleanup_game_over_screen)
+            .add_systems(OnEnter(AppState::Credits), setup_credits_screen)
+            .add_systems(
+                Update,
+                (update_credits_scroll, handle_credits_input).run_if(in_state(AppState::Credits)),
+            )
+            .add_systems(OnExit(AppState::Credits), cleanup_credits_screen);
     }
 }
 
@@ -70,6 +76,12 @@ struct DamageNumber {
     timer: Timer,
     velocity: Vec2,
 }
+
+#[derive(Component)]
+struct CreditsScreen;
+
+#[derive(Component)]
+struct CreditsText;
 
 // -- Helper Functions --
 
@@ -713,6 +725,330 @@ fn cleanup_game_ui(
         )>,
     >,
 ) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+// -- Credits Systems --
+
+fn setup_credits_screen(mut commands: Commands, assets: Res<GameAssets>) {
+    // Play victory music (loop for credits duration)
+    commands.spawn((
+        AudioBundle {
+            source: assets.victory_music.clone(),
+            settings: PlaybackSettings::LOOP,
+        },
+        VictoryDefeatMusic,
+    ));
+
+    // Create credits screen with scrolling text
+    commands
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    position_type: PositionType::Absolute,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(40.0),
+                    ..default()
+                },
+                background_color: Color::srgba(0.0, 0.0, 0.0, 0.8).into(),
+                ..default()
+            },
+            CreditsScreen,
+        ))
+        .with_children(|parent| {
+            // Title - start at bottom
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "Juice: Zero Bugs Given",
+                        TextStyle {
+                            font_size: 60.0,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(800.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Thanks - slightly above title
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "Thanks for playing!",
+                        TextStyle {
+                            font_size: 40.0,
+                            color: Color::srgb(0.9, 0.9, 0.9),
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(750.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Developer
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "Developed by 🇿🇲 Josiah Mbao 🇿🇲",
+                        TextStyle {
+                            font_size: 35.0,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(680.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Built with
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "Built with Rust & Bevy",
+                        TextStyle {
+                            font_size: 35.0,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(620.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Inspired by
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "Inspired by software bugs,",
+                        TextStyle {
+                            font_size: 30.0,
+                            color: Color::srgb(0.8, 0.8, 0.8),
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(550.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Crab emoji line
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "built with zero bugs given 🦀",
+                        TextStyle {
+                            font_size: 30.0,
+                            color: Color::srgb(0.8, 0.8, 0.8),
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(500.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Assets
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "Assets:",
+                        TextStyle {
+                            font_size: 28.0,
+                            color: Color::srgb(0.7, 0.7, 0.7),
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(430.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Asset sources
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "Kenney.nl",
+                        TextStyle {
+                            font_size: 25.0,
+                            color: Color::srgb(0.6, 0.6, 0.6),
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(380.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "OpenGameArt.org",
+                        TextStyle {
+                            font_size: 25.0,
+                            color: Color::srgb(0.6, 0.6, 0.6),
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(340.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Special thanks
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "Special thanks:",
+                        TextStyle {
+                            font_size: 28.0,
+                            color: Color::srgb(0.7, 0.7, 0.7),
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(270.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Communities
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "The Rust & Bevy communities",
+                        TextStyle {
+                            font_size: 25.0,
+                            color: Color::srgb(0.6, 0.6, 0.6),
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(220.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Copyright
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "© 2025 AfroDev",
+                        TextStyle {
+                            font_size: 25.0,
+                            color: Color::srgb(0.5, 0.5, 0.5),
+                            ..default()
+                        },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        top: Val::Px(170.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                CreditsText,
+            ));
+
+            // Exit instruction at bottom (fixed position, not scrolling)
+            parent.spawn(TextBundle::from_section(
+                "Press SPACE to return to menu",
+                TextStyle {
+                    font_size: 20.0,
+                    color: Color::srgb(0.8, 0.8, 0.8),
+                    ..default()
+                },
+            ));
+        });
+}
+
+fn update_credits_scroll(
+    time: Res<Time>,
+    mut query: Query<&mut Style, With<CreditsText>>,
+) {
+    let scroll_speed = 30.0; // pixels per second
+    let delta_y = scroll_speed * time.delta_seconds();
+
+    for mut style in query.iter_mut() {
+        if let Val::Px(current) = style.top {
+            style.top = Val::Px(current - delta_y);
+        }
+    }
+}
+
+fn handle_credits_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        next_state.set(AppState::MainMenu);
+    }
+}
+
+fn cleanup_credits_screen(mut commands: Commands, query: Query<Entity, With<CreditsScreen>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }

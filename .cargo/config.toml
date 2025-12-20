@@ -1,0 +1,10 @@
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[profile.release]
+lto = true
+strip = true
+panic = "abort"

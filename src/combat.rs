@@ -359,20 +359,25 @@ fn check_for_game_over(
             // Human victory
             progress.record_victory(config.boss, fight_duration, fight_tracker.current_combo);
 
-            // Unlock next boss if human player won against AI
-            if let Some(next_boss) = progress.get_next_boss(config.boss) {
-                progress.unlock_boss(next_boss);
-                tracing::info!("New boss unlocked: {:?}", next_boss);
+            // Check if this was the final boss
+            if config.boss.is_final_boss() {
+                tracing::info!("All bosses defeated! Showing credits.");
+                next_state.set(AppState::Credits);
             } else {
-                tracing::info!("All bosses defeated! Game completed.");
+                // Unlock next boss if human player won against AI
+                if let Some(next_boss) = progress.get_next_boss(config.boss) {
+                    progress.unlock_boss(next_boss);
+                    tracing::info!("New boss unlocked: {:?}", next_boss);
+                }
+                tracing::info!("Player {} wins! Game Over.", winner_id);
+                next_state.set(AppState::GameOver);
             }
         } else {
             // AI victory or human vs human
             progress.record_defeat(config.boss);
+            tracing::info!("Player {} wins! Game Over.", winner_id);
+            next_state.set(AppState::GameOver);
         }
-
-        tracing::info!("Player {} wins! Game Over.", winner_id);
-        next_state.set(AppState::GameOver);
     } else if players_alive.is_empty() && !config.player2_is_human {
         // Both died, but only if vs AI (since human vs human doesn't make sense for draw)
         winner.player_id = None;
