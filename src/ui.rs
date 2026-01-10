@@ -1025,10 +1025,7 @@ fn setup_credits_screen(mut commands: Commands, assets: Res<GameAssets>) {
         });
 }
 
-fn update_credits_scroll(
-    time: Res<Time>,
-    mut query: Query<&mut Style, With<CreditsText>>,
-) {
+fn update_credits_scroll(time: Res<Time>, mut query: Query<&mut Style, With<CreditsText>>) {
     let scroll_speed = 30.0; // pixels per second
     let delta_y = scroll_speed * time.delta_seconds();
 
