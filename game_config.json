@@ -1,6 +1,6 @@
 {
-  "arena": "BufferOverflow",
+  "arena": "DataRace",
   "boss": "UndefinedBehavior",
-  "difficulty": "Normal",
+  "difficulty": "Easy",
   "player2_is_human": false
 }

@@ -1,6 +1,6 @@
 {
   "statistics": {
-    "best_win_streak": 1,
+    "best_win_streak": 4,
     "boss_statistics": {
       "BufferOverflow": {
         "best_combo": 0,
@@ -15,16 +15,16 @@
         "wins": 0
       },
       "NullPointer": {
-        "best_combo": 22,
+        "best_combo": 27,
         "fastest_victory_seconds": 17.431743621826172,
         "losses": 0,
-        "wins": 1
+        "wins": 2
       },
       "UndefinedBehavior": {
-        "best_combo": 0,
-        "fastest_victory_seconds": null,
-        "losses": 0,
-        "wins": 0
+        "best_combo": 44,
+        "fastest_victory_seconds": 24.51494789123535,
+        "losses": 1,
+        "wins": 3
       },
       "UseAfterFree": {
         "best_combo": 0,
@@ -33,12 +33,13 @@
         "wins": 0
       }
     },
-    "current_win_streak": 1,
-    "total_fights": 71,
-    "total_wins": 1
+    "current_win_streak": 4,
+    "total_fights": 85,
+    "total_wins": 5
   },
   "unlocked_bosses": [
     "NullPointer",
-    "UndefinedBehavior"
+    "UndefinedBehavior",
+    "DataRace"
   ]
 }

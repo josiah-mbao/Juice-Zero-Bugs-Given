@@ -4,6 +4,7 @@
 [![Powered by Bevy](https://img.shields.io/badge/Powered%20by-Bevy-blue?logo=bevy)](https://bevyengine.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![itch.io](https://img.shields.io/badge/Available%20on-itch.io-fa5c5c?logo=itch.io)](https://josiah-mbao.itch.io/juice-zero-bugs-given)
+[![Platform](https://img.shields.io/badge/Platform-macOS-blue?logo=apple)](https://josiah-mbao.itch.io/juice-zero-bugs-given)
 
 <img width="1392" height="860" alt="Screenshot 2025-08-28 at 10 08 21" src="https://github.com/user-attachments/assets/ccddc26f-4967-428d-a8cd-e5d3f22b9d9e" />
 
@@ -20,8 +21,19 @@ The project focuses on tight combat, readable enemy behavior, and ECS-driven gam
 
 ## 📊 Release Status
 
-**Current version:** v0.1.0  
+**Current version:** v0.1.0
+**Platform Availability:** macOS (itch.io)
+**Web Version:** In Development
+
 A polished single-player release with complete combat, audio, UI, and game flow systems.
+
+### Platform Support
+- ✅ **macOS**: Fully available on itch.io
+- 🔄 **Web Browsers**: Infrastructure ready, awaiting Bevy ecosystem updates
+- 🔄 **Windows/Linux**: Native builds available via source compilation
+
+### Web Version Status
+The game is built with Bevy 0.14, which has basic web support but encounters dependency conflicts with current ecosystem versions. Web deployment will be available once Bevy 0.15+ resolves these compatibility issues. All web build infrastructure is prepared and ready for deployment.
 
 ## 🎮 Key Features
 

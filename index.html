@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juice: Zero Bugs Given</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        #bevy {
+            width: 800px;
+            height: 600px;
+            border: 2px solid #333;
+            background: #000;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+            max-width: 800px;
+        }
+
+        .controls h2 {
+            color: #ff6b6b;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .control-section h3 {
+            color: #4ecdc4;
+            margin-bottom: 10px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .control-group h4 {
+            margin: 0 0 10px 0;
+            color: #ffe66d;
+        }
+
+        .control-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .key {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 900px) {
+            #bevy {
+                width: 100vw;
+                height: 70vh;
+            }
+
+            .controls {
+                padding: 20px;
+                font-size: 14px;
+            }
+
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="bevy"></canvas>
+    <div class="loading" id="loading">Loading Juice: Zero Bugs Given...</div>
+
+    <div class="controls">
+        <h2>Juice: Zero Bugs Given 🕹️</h2>
+        <p>A 2D arcade boss-fighting game where you battle programming bugs!</p>
+
+        <div class="control-grid">
+            <div class="control-group">
+                <h4>Player 1 Controls</h4>
+                <div class="control-item">
+                    <span>Move:</span>
+                    <span><span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span></span>
+                </div>
+                <div class="control-item">
+                    <span>Light Attack:</span>
+                    <span class="key">F</span>
+                </div>
+                <div class="control-item">
+                    <span>Heavy Attack:</span>
+                    <span class="key">R</span>
+                </div>
+                <div class="control-item">
+                    <span>Kick:</span>
+                    <span class="key">T</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h4>Player 2 Controls</h4>
+                <div class="control-item">
+                    <span>Move:</span>
+                    <span><span class="key">↑</span> <span class="key">←</span> <span class="key">↓</span> <span class="key">→</span></span>
+                </div>
+                <div class="control-item">
+                    <span>Light Attack:</span>
+                    <span class="key">L</span>
+                </div>
+                <div class="control-item">
+                    <span>Heavy Attack:</span>
+                    <span class="key">O</span>
+                </div>
+                <div class="control-item">
+                    <span>Kick:</span>
+                    <span class="key">P</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3>Game Controls</h3>
+            <div class="control-item">
+                <span>Pause:</span>
+                <span class="key">P</span> or <span class="key">ESC</span>
+            </div>
+            <div class="control-item">
+                <span>Return to Menu:</span>
+                <span class="key">SPACE</span> (on Game Over screen)
+            </div>
+        </div>
+
+        <p style="font-size: 14px; color: #ccc; margin-top: 30px;">
+            Built with Rust and Bevy • <a href="https://github.com/josiah-mbao/Juice-Zero-Bugs-Given" style="color: #4ecdc4;" target="_blank">View Source</a>
+        </p>
+    </div>
+
+    <script type="module">
+        import init from './pkg/fighter_game.js';
+
+        async function run() {
+            try {
+                await init();
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                console.error('Failed to initialize game:', error);
+                document.getElementById('loading').innerHTML =
+                    'Failed to load game. Please check console for details.<br>' +
+                    'Note: WebGL2 support is required for this game.';
+            }
+        }
+
+        run();
+    </script>
+</body>
+</html>

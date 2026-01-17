@@ -3,7 +3,7 @@
 set -e
 
 echo "Building release binary..."
-cargo build --release
+cargo build --release --no-default-features --features bevy/dynamic_linking
 
 echo "Creating distribution directory..."
 mkdir -p dist/macOS
